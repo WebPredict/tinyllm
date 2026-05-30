@@ -90,6 +90,39 @@ Interesting observations, learnings, and moments from building the project that 
 - Training planner helps predict time/risk before starting a run
 - Building it in React/TS = dogfooding the domain
 
+### Cloud GPU: 15x faster than laptop for $1.49/hr
+- RunPod A100 SXM: 308K tok/s vs laptop's 21K tok/s
+- 500-step test run cost ~$0.10 and took 26 seconds
+- Estimated cost for full 3B training: ~$81 (way under the $10K budget)
+- Our cost estimates in the plan were very conservative — good news
+- Main gotcha: forgetting to shut down the pod (set a timer!)
+- GitHub Releases for hosting training data (52MB corpus) works great — one `wget` on cloud machine
+
+### Hybrid modules are mostly domain-agnostic
+- Built all core hybrid modules in ~1 hour: memory, verifier, router, cache, pipeline
+- Key insight: only the validators are domain-specific. Everything else is generic.
+- The pipeline orchestrator (hybrid/pipeline.py) connects everything into one `pipeline.run(query)` call
+- This validates the domain framework idea — swapping domains is mostly swapping validators and RAG corpus
+- Book lesson: show the generic modules first, then plug in domain-specific validators
+
+### The verifier loop is deceptively simple
+- Just generate → validate → feed errors back → regenerate
+- But it's powerful because it turns any validator into a free training signal
+- The loop is ~100 lines of code, domain-agnostic
+- Multiple validators compose naturally — each catches different error categories
+
+### Routing saves latency on easy queries
+- Not every query needs RAG + validation + memory + verifier
+- Router estimates complexity from surface signals and routes to appropriate tier
+- Cache hit = instant. Simple query = direct generation. Complex = full pipeline.
+- This matters for UX — most queries should feel fast
+
+### Memory enables personalization without retraining
+- SQLite stores interaction history, error patterns, success rates
+- Compact context summary injected into prompts (~500 chars)
+- The system "learns" your patterns without any model updates
+- Over time, the memory + online learning create a personalized tool
+
 ---
 
 ## Planning Phase Insights

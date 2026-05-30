@@ -22,16 +22,16 @@
 - [ ] Compare char vs BPE results
 
 ## Phase 2: Tokenizer
-- [ ] Train BPE tokenizer on React/TS data
-- [ ] Train token-level model
-- [ ] Compare char vs token model
+- [x] Train BPE tokenizer on React/TS data — 8K vocab, 3.2x compression
+- [x] Train token-level model — 5M BPE on React/TS (val loss 1.70)
+- [ ] Compare char vs BPE results (eval data collected, need comparison)
 - [ ] Tokenizer size experiments (4K vs 8K vs 16K)
 
 ## Phase 3: Data Quality
-- [ ] Data filtering pipeline
-- [ ] Deduplication
-- [ ] Quality scoring
-- [ ] Raw vs filtered comparison
+- [x] Data filtering pipeline — scripts/filter_data.py
+- [x] Deduplication — 990 exact dupes found and removed
+- [x] Quality scoring — 77.5 avg quality, scripts/analyze_data.py
+- [ ] Raw vs filtered comparison (filtered corpus ready, not yet trained on)
 
 ## Phase 4: Synthetic Data
 - [ ] Generate synthetic React/TS examples (via Claude API)
@@ -40,12 +40,12 @@
 - [ ] Measure impact
 
 ## Phase 5: Hybrid Modules (Core)
-- [ ] RAG (retrieval-augmented generation)
-- [ ] Structured memory (SQLite)
-- [ ] Rules engine / validators (TypeScript compiler, ESLint)
+- [x] RAG (retrieval-augmented generation) — 120K chunks indexed, search working
+- [x] Structured memory (SQLite) — hybrid/memory.py
+- [x] Rules engine / validators (TypeScript compiler, ESLint) — hybrid/validators.py
 - [ ] Calculator / code interpreter
 - [ ] Planner/executor loop
-- [ ] Verifier/critic
+- [x] Verifier/critic — hybrid/verifier.py (generic generate→validate→revise loop)
 - [ ] Symbolic task graphs
 
 ## Phase 6: Hybrid Modules (Additional)
@@ -55,12 +55,16 @@
 - [ ] Confidence estimation / abstention
 - [ ] LoRA adapters per sub-task
 - [ ] Knowledge distillation framing
-- [ ] Routing / cascading
-- [ ] Caching / memoization
+- [x] Routing / cascading — hybrid/router.py (tier 0-3 routing)
+- [x] Caching / memoization — hybrid/cache.py (SQLite-backed, fuzzy matching)
 - [ ] DPO preference alignment
 - [ ] Query rewriting for retrieval
+- [x] Hybrid pipeline — hybrid/pipeline.py (orchestrates all modules)
 
 ## Phase 7: Cloud Training
+- [x] Cloud infrastructure tested — RunPod A100, 308K tok/s (15x laptop)
+- [x] GitHub release for data files — v0.1-data
+- [ ] 30M cloud runs (Shakespeare done, React/TS in progress)
 - [ ] 100M pilot run
 - [ ] 300M ablation runs
 - [ ] 1B main run
