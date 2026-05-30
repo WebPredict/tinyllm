@@ -9,6 +9,7 @@ data/react-ts/analysis.json
 data/react-ts/corpus.txt
 data/react-ts/corpus_filtered.txt
 data/input.txt
+data/rag_index/
 dashboard/node_modules/
 dashboard/dist/
 *.egg-info/

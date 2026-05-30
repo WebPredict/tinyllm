@@ -46,12 +46,7 @@ def load_model(checkpoint_path):
     print(f"Loading: {checkpoint_path.name}")
     checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
     cfg = checkpoint["config"]
-
-    data_path = Path(__file__).parent.parent / cfg["data_file"]
-    text = data_path.read_text()
-    chars = sorted(list(set(text)))
-    stoi = {ch: i for i, ch in enumerate(chars)}
-    itos = {i: ch for i, ch in enumerate(chars)}
+    is_bpe = checkpoint.get("tokenizer_type") == "bpe"
 
     model = GPT(
         vocab_size=cfg["vocab_size"],
@@ -63,28 +58,53 @@ def load_model(checkpoint_path):
     model.load_state_dict(checkpoint["model_state_dict"])
     model.eval()
 
-    return model, stoi, itos, cfg, checkpoint
+    if is_bpe:
+        from tokenizers import Tokenizer
+        tok_path = Path(__file__).parent.parent / cfg["tokenizer_file"]
+        tokenizer = Tokenizer.from_file(str(tok_path))
+
+        def encode_fn(text):
+            ids = tokenizer.encode(text).ids
+            return ids if ids else [0]
+
+        def decode_fn(ids):
+            return tokenizer.decode(ids)
+
+        return model, encode_fn, decode_fn, cfg, checkpoint
+    else:
+        data_path = Path(__file__).parent.parent / cfg["data_file"]
+        text = data_path.read_text()
+        chars = sorted(list(set(text)))
+        stoi = {ch: i for i, ch in enumerate(chars)}
+        itos = {i: ch for i, ch in enumerate(chars)}
+
+        def encode_fn(text):
+            return [stoi[c] for c in text if c in stoi] or [0]
+
+        def decode_fn(ids):
+            return ''.join([itos.get(i, '?') for i in ids])
+
+        return model, encode_fn, decode_fn, cfg, checkpoint
 
 
-def generate(model, stoi, itos, prompt, max_tokens=200, temperature=0.8, top_k=40):
-    idx = torch.tensor([[stoi[c] for c in prompt if c in stoi]], dtype=torch.long)
-    if idx.shape[1] == 0:
-        idx = torch.tensor([[stoi.get('\n', 0)]], dtype=torch.long)
+def generate(model, encode_fn, decode_fn, prompt, max_tokens=200, temperature=0.8, top_k=40):
+    ids = encode_fn(prompt)
+    idx = torch.tensor([ids], dtype=torch.long)
     output = model.generate(idx, max_new_tokens=max_tokens, temperature=temperature, top_k=top_k)
-    return ''.join([itos[i] for i in output[0].tolist()])
+    return decode_fn(output[0].tolist())
 
 
 # ─────────────────────────────────────────────
 # Eval metrics
 # ─────────────────────────────────────────────
 
-def eval_perplexity(model, data, stoi, block_size, num_batches=50, batch_size=32):
+def eval_perplexity(model, data, encode_fn, block_size, num_batches=50, batch_size=32):
     """Calculate perplexity on held-out data. Lower is better."""
     model.eval()
     total_loss = 0
     count = 0
 
-    encoded = torch.tensor([stoi.get(c, 0) for c in data], dtype=torch.long)
+    encoded = torch.tensor(encode_fn(data), dtype=torch.long)
 
     with torch.no_grad():
         for _ in range(num_batches):
@@ -100,12 +120,12 @@ def eval_perplexity(model, data, stoi, block_size, num_batches=50, batch_size=32
     return avg_loss, perplexity
 
 
-def eval_repetition(model, stoi, itos, num_samples=20, length=300):
+def eval_repetition(model, encode_fn, decode_fn, num_samples=20, length=300):
     """Measure how repetitive the model's output is. Lower is better."""
     total_rep_rate = 0
 
     for _ in range(num_samples):
-        text = generate(model, stoi, itos, "\n", max_tokens=length, temperature=0.8)
+        text = generate(model, encode_fn, decode_fn, "\n", max_tokens=length, temperature=0.8)
 
         # Check for repeated n-grams
         words = text.split()
@@ -125,7 +145,7 @@ def eval_repetition(model, stoi, itos, num_samples=20, length=300):
     return total_rep_rate / num_samples
 
 
-def eval_structure(model, stoi, itos, num_samples=20, length=300):
+def eval_structure(model, encode_fn, decode_fn, num_samples=20, length=300):
     """Check if generated text has expected structural features."""
     results = {
         "has_newlines": 0,
@@ -136,7 +156,7 @@ def eval_structure(model, stoi, itos, num_samples=20, length=300):
     }
 
     for _ in range(num_samples):
-        text = generate(model, stoi, itos, "\n", max_tokens=length, temperature=0.8)
+        text = generate(model, encode_fn, decode_fn, "\n", max_tokens=length, temperature=0.8)
 
         results["has_newlines"] += 1 if "\n" in text else 0
         results["has_colons"] += 1 if ":" in text else 0
@@ -149,7 +169,7 @@ def eval_structure(model, stoi, itos, num_samples=20, length=300):
         if line_lengths:
             results["avg_line_length"] += sum(line_lengths) / len(line_lengths)
 
-        printable = sum(1 for c in text if c in stoi)
+        printable = sum(1 for c in text if c.isprintable() or c in '\n\t')
         results["valid_chars_ratio"] += printable / max(len(text), 1)
 
     # Normalize
@@ -159,12 +179,12 @@ def eval_structure(model, stoi, itos, num_samples=20, length=300):
     return results
 
 
-def eval_prompt_completion(model, stoi, itos, prompts):
+def eval_prompt_completion(model, encode_fn, decode_fn, prompts):
     """Test specific prompts and score completions."""
     results = []
 
     for prompt_text, checks in prompts:
-        output = generate(model, stoi, itos, prompt_text, max_tokens=200, temperature=0.5)
+        output = generate(model, encode_fn, decode_fn, prompt_text, max_tokens=200, temperature=0.5)
         completion = output[len(prompt_text):]
 
         scores = {}
@@ -323,7 +343,7 @@ def run_evals(checkpoint_path=None):
     else:
         checkpoint_path = Path(checkpoint_path)
 
-    model, stoi, itos, cfg, checkpoint = load_model(checkpoint_path)
+    model, encode_fn, decode_fn, cfg, checkpoint = load_model(checkpoint_path)
     run_id = checkpoint.get("run_id", checkpoint_path.stem)
 
     # Detect domain from data file
@@ -334,6 +354,7 @@ def run_evals(checkpoint_path=None):
     print(f"Model: {model.n_params:,} params")
     print(f"Run ID: {run_id}")
     print(f"Domain: {domain}")
+    print(f"Tokenizer: {'BPE' if checkpoint.get('tokenizer_type') == 'bpe' else 'char'}")
     print(f"Step: {checkpoint['step']:,}")
     print()
 
@@ -347,7 +368,7 @@ def run_evals(checkpoint_path=None):
 
     # 1. Perplexity
     print("Running: perplexity...")
-    loss, ppl = eval_perplexity(model, val_text, stoi, cfg["block_size"])
+    loss, ppl = eval_perplexity(model, val_text, encode_fn, cfg["block_size"])
     results["perplexity"] = {"loss": loss, "perplexity": ppl}
     print(f"  Val loss: {loss:.4f}")
     print(f"  Perplexity: {ppl:.2f}")
@@ -355,14 +376,14 @@ def run_evals(checkpoint_path=None):
 
     # 2. Repetition
     print("Running: repetition check...")
-    rep_rate = eval_repetition(model, stoi, itos)
+    rep_rate = eval_repetition(model, encode_fn, decode_fn)
     results["repetition"] = {"repetition_rate": rep_rate}
     print(f"  Repetition rate: {rep_rate:.4f} ({rep_rate*100:.1f}%)")
     print()
 
     # 3. Structure
     print("Running: structure check...")
-    structure = eval_structure(model, stoi, itos)
+    structure = eval_structure(model, encode_fn, decode_fn)
     results["structure"] = structure
     print(f"  Has newlines: {structure['has_newlines']*100:.0f}%")
     print(f"  Has colons: {structure['has_colons']*100:.0f}%")
@@ -374,7 +395,7 @@ def run_evals(checkpoint_path=None):
     # 4. Prompt completions
     print("Running: prompt completions...")
     prompts = get_react_prompts() if is_react else get_shakespeare_prompts()
-    completions = eval_prompt_completion(model, stoi, itos, prompts)
+    completions = eval_prompt_completion(model, encode_fn, decode_fn, prompts)
 
     prompt_scores = {}
     total_checks = 0
