@@ -103,4 +103,32 @@ print('--- Final sample ---')
 idx = torch.tensor([[0]], device=device)
 sample = model.generate(idx, max_new_tokens=300, temperature=0.8, top_k=40)
 print(tokenizer.decode(sample[0].tolist()))
+
+# Save checkpoint
+import os
+os.makedirs('checkpoints', exist_ok=True)
+checkpoint_path = 'checkpoints/cloud_30m_react_bpe.pt'
+torch.save({
+    'model_state_dict': model.state_dict(),
+    'config': {
+        'vocab_size': vocab_size,
+        'block_size': block_size,
+        'n_layer': 8,
+        'n_head': 8,
+        'n_embd': 512,
+        'dropout': 0.1,
+        'data_file': 'data/react-ts/corpus.txt',
+        'tokenizer_file': 'data/react-ts/tokenizer/bpe_8000.json',
+        'train_split': 0.95,
+    },
+    'step': 5000,
+    'run_id': 'cloud_30m_react_bpe',
+    'tokenizer_type': 'bpe',
+    'best_val_loss': best_val,
+}, checkpoint_path)
+print(f'Checkpoint saved: {checkpoint_path}')
+print(f'Size: {os.path.getsize(checkpoint_path) / 1e6:.1f} MB')
+print()
+print('To download to your laptop:')
+print(f'  scp -P <port> root@<ip>:tinyllm/{checkpoint_path} ./checkpoints/')
 "
