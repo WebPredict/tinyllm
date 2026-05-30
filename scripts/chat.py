@@ -1,13 +1,15 @@
 """
-Simple interactive chat with a trained model.
-Type a prompt, see what the model generates. Type 'quit' to exit.
+Interactive chat with a trained model.
+Supports char-level, BPE, and LoRA-adapted models.
 
-Usage: python scripts/chat.py [checkpoint_path]
-  If no checkpoint given, uses the latest one in checkpoints/
+Usage:
+  python scripts/chat.py                                    ← latest checkpoint
+  python scripts/chat.py checkpoints/some_model.pt          ← specific model
+  python scripts/chat.py checkpoints/model.pt --lora checkpoints/model_lora.pt
+  python scripts/chat.py --instruct                         ← instruction mode
 """
 
 import sys
-import glob
 import torch
 from pathlib import Path
 
@@ -16,29 +18,30 @@ from model.gpt import GPT
 
 
 def find_latest_checkpoint():
-    """Find the most recent checkpoint file."""
     checkpoint_dir = Path(__file__).parent.parent / "checkpoints"
-    files = sorted(checkpoint_dir.glob("*.pt"), key=lambda f: f.stat().st_mtime)
+    # Prefer non-LoRA checkpoints
+    files = [f for f in checkpoint_dir.glob("*.pt") if "_lora" not in f.name]
+    files = sorted(files, key=lambda f: f.stat().st_mtime)
     if not files:
         print("No checkpoints found in checkpoints/")
         sys.exit(1)
     return files[-1]
 
 
-def load_model(checkpoint_path):
-    """Load model from checkpoint."""
-    print(f"Loading: {checkpoint_path}")
+def find_lora_for(checkpoint_path):
+    """Look for a matching LoRA adapter."""
+    lora_path = checkpoint_path.parent / f"{checkpoint_path.stem}_lora.pt"
+    if lora_path.exists():
+        return lora_path
+    return None
+
+
+def load_model(checkpoint_path, lora_path=None):
+    print(f"Loading: {checkpoint_path.name}")
     checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
     cfg = checkpoint["config"]
+    is_bpe = checkpoint.get("tokenizer_type") == "bpe"
 
-    # Rebuild character mappings from the data file
-    data_path = Path(__file__).parent.parent / cfg["data_file"]
-    text = data_path.read_text()
-    chars = sorted(list(set(text)))
-    stoi = {ch: i for i, ch in enumerate(chars)}
-    itos = {i: ch for i, ch in enumerate(chars)}
-
-    # Rebuild model
     model = GPT(
         vocab_size=cfg["vocab_size"],
         block_size=cfg["block_size"],
@@ -47,48 +50,120 @@ def load_model(checkpoint_path):
         n_embd=cfg["n_embd"],
     )
     model.load_state_dict(checkpoint["model_state_dict"])
+
+    # Load LoRA if available
+    if lora_path:
+        print(f"Loading LoRA: {lora_path.name}")
+        from training.finetune_lora import apply_lora
+        lora_checkpoint = torch.load(lora_path, map_location="cpu", weights_only=False)
+        lora_cfg = lora_checkpoint["lora_config"]
+        model = apply_lora(model, rank=lora_cfg["rank"], alpha=lora_cfg["alpha"])
+        # Load LoRA weights
+        lora_state = lora_checkpoint["lora_state_dict"]
+        for name, param in model.named_parameters():
+            if name in lora_state:
+                param.data = lora_state[name]
+
     model.eval()
 
+    # Set up encode/decode functions
+    if is_bpe:
+        from tokenizers import Tokenizer
+        tok_path = Path(__file__).parent.parent / cfg["tokenizer_file"]
+        tokenizer = Tokenizer.from_file(str(tok_path))
+
+        def encode(text):
+            ids = tokenizer.encode(text).ids
+            return ids if ids else [0]
+
+        def decode(ids):
+            return tokenizer.decode(ids)
+    else:
+        data_path = Path(__file__).parent.parent / cfg["data_file"]
+        text = data_path.read_text()
+        chars = sorted(list(set(text)))
+        stoi = {ch: i for i, ch in enumerate(chars)}
+        itos = {i: ch for i, ch in enumerate(chars)}
+
+        def encode(text):
+            return [stoi[c] for c in text if c in stoi] or [0]
+
+        def decode(ids):
+            return ''.join([itos.get(i, '?') for i in ids])
+
     print(f"Model: {model.n_params:,} params")
-    print(f"Trained for {checkpoint['step']:,} steps")
+    print(f"Tokenizer: {'BPE' if is_bpe else 'char'}")
+    if lora_path:
+        print(f"LoRA: loaded")
     print()
 
-    return model, stoi, itos, cfg
+    return model, encode, decode, cfg
 
 
-def generate(model, stoi, itos, prompt, max_tokens=300, temperature=0.8, top_k=40):
-    """Generate text from a prompt."""
-    # Encode prompt, skipping unknown characters
-    idx = torch.tensor([[stoi[c] for c in prompt if c in stoi]], dtype=torch.long)
+def generate(model, encode, decode, prompt, max_tokens=300, temperature=0.8, top_k=40):
+    ids = encode(prompt)
+    idx = torch.tensor([ids], dtype=torch.long)
     if idx.shape[1] == 0:
-        idx = torch.tensor([[stoi['\n']]], dtype=torch.long)
-
+        idx = torch.tensor([[0]], dtype=torch.long)
     output = model.generate(idx, max_new_tokens=max_tokens, temperature=temperature, top_k=top_k)
-    return ''.join([itos[i] for i in output[0].tolist()])
+    return decode(output[0].tolist())
 
 
 def main():
-    # Load checkpoint
-    if len(sys.argv) > 1:
-        checkpoint_path = Path(sys.argv[1])
-    else:
+    # Parse args
+    checkpoint_path = None
+    lora_path = None
+    instruct_mode = False
+
+    args = sys.argv[1:]
+    i = 0
+    while i < len(args):
+        if args[i] == "--lora" and i + 1 < len(args):
+            lora_path = Path(args[i + 1])
+            i += 2
+        elif args[i] == "--instruct":
+            instruct_mode = True
+            i += 1
+        elif not args[i].startswith("--"):
+            checkpoint_path = Path(args[i])
+            i += 1
+        else:
+            i += 1
+
+    if checkpoint_path is None:
         checkpoint_path = find_latest_checkpoint()
 
-    model, stoi, itos, cfg = load_model(checkpoint_path)
+    # Auto-detect LoRA
+    if lora_path is None:
+        lora_path = find_lora_for(checkpoint_path)
+        if lora_path:
+            print(f"Found LoRA adapter: {lora_path.name}")
+            instruct_mode = True  # Auto-enable instruct mode with LoRA
 
-    print("═" * 50)
+    model, encode, decode, cfg = load_model(checkpoint_path, lora_path)
+
+    print("=" * 50)
     print("  TinyLLM Chat")
-    print("  Type a prompt and see what the model generates.")
-    print("  Commands: quit, temp=0.5, tokens=500")
-    print("═" * 50)
+    if instruct_mode:
+        print("  INSTRUCTION MODE: describe what you want")
+        print("  Example: Create a toggle button component")
+    else:
+        print("  COMPLETION MODE: continue code you type")
+        print("  Example: function Button(")
+    print()
+    print("  Commands: quit, temp=0.5, tokens=500, mode")
+    print("=" * 50)
     print()
 
-    temperature = 0.8
+    temperature = 0.7
     max_tokens = 300
 
     while True:
         try:
-            prompt = input("You> ")
+            if instruct_mode:
+                prompt = input("Instruction> ")
+            else:
+                prompt = input("You> ")
         except (EOFError, KeyboardInterrupt):
             print("\nBye!")
             break
@@ -105,10 +180,30 @@ def main():
             max_tokens = int(prompt.split("=")[1])
             print(f"  Max tokens set to {max_tokens}")
             continue
+        if prompt.lower() == "mode":
+            instruct_mode = not instruct_mode
+            mode_name = "INSTRUCTION" if instruct_mode else "COMPLETION"
+            print(f"  Switched to {mode_name} mode")
+            continue
 
-        output = generate(model, stoi, itos, prompt, max_tokens, temperature)
+        # Build prompt based on mode
+        if instruct_mode:
+            full_prompt = f"<|instruction|>\n{prompt}\n<|input|>\n\n<|output|>\n"
+        else:
+            full_prompt = prompt
+
+        output = generate(model, encode, decode, full_prompt, max_tokens, temperature)
+
+        # Clean up output for display
+        if instruct_mode:
+            # Extract just the output part
+            if "<|output|>" in output:
+                output = output.split("<|output|>")[-1]
+            if "<|endoftext|>" in output:
+                output = output.split("<|endoftext|>")[0]
+
         print()
-        print(output)
+        print(output.strip())
         print()
 
 

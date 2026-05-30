@@ -117,6 +117,23 @@ Interesting observations, learnings, and moments from building the project that 
 - Cache hit = instant. Simple query = direct generation. Complex = full pipeline.
 - This matters for UX — most queries should feel fast
 
+### 30M cloud model — first real code generation
+- 30M BPE model on React/TS, 5000 steps on A100, 42 minutes, val loss 1.48
+- Generates real import paths, TypeScript decorators, tRPC patterns, proper class syntax
+- Best sample: complete NestJS-style API input class with decorators and validators
+- SVG path data and translation files appeared in samples — added to filter list for next corpus
+- Repetition still a problem (same token loops) — needs larger model or repetition penalty
+
+### LoRA instruction tuning on 30M — surprisingly works
+- 115 instruction pairs (15 hand-written + 100 Claude-generated, ~$1)
+- LoRA fine-tune: 27 seconds on laptop, loss dropped 1.19 → 0.21
+- "Write a custom hook for debouncing" → generated a hook with correct structure (useState, useEffect, return)
+- Code has bugs but intent and structure are right — this is exactly what validators fix
+- "Add TypeScript types" → understands the task but ignores the specific input code, generates generic interfaces
+- Key insight: 30M can learn the instruction→code pattern, but lacks capacity to precisely follow input
+- This motivates both scaling up AND the hybrid approach: model gets intent, validators fix execution
+- Great book content: show the progression from "can't follow instructions at all" to "gets the idea but sloppy"
+
 ### Memory enables personalization without retraining
 - SQLite stores interaction history, error patterns, success rates
 - Compact context summary injected into prompts (~500 chars)

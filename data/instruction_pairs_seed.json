@@ -1,0 +1,77 @@
+[
+  {
+    "instruction": "Add TypeScript types to this function",
+    "input": "function add(a, b) {\n  return a + b\n}",
+    "output": "function add(a: number, b: number): number {\n  return a + b\n}"
+  },
+  {
+    "instruction": "Add TypeScript prop types to this React component",
+    "input": "function Greeting({ name, age }) {\n  return <div>Hello {name}, you are {age}</div>\n}",
+    "output": "interface GreetingProps {\n  name: string\n  age: number\n}\n\nfunction Greeting({ name, age }: GreetingProps) {\n  return <div>Hello {name}, you are {age}</div>\n}"
+  },
+  {
+    "instruction": "Convert this to use useState",
+    "input": "let count = 0\nfunction increment() { count++ }",
+    "output": "const [count, setCount] = useState(0)\nfunction increment() { setCount(c => c + 1) }"
+  },
+  {
+    "instruction": "Add a loading state to this component",
+    "input": "function UserList() {\n  const [users, setUsers] = useState([])\n  useEffect(() => {\n    fetch('/api/users').then(r => r.json()).then(setUsers)\n  }, [])\n  return <ul>{users.map(u => <li key={u.id}>{u.name}</li>)}</ul>\n}",
+    "output": "function UserList() {\n  const [users, setUsers] = useState([])\n  const [loading, setLoading] = useState(true)\n  useEffect(() => {\n    fetch('/api/users').then(r => r.json()).then(data => {\n      setUsers(data)\n      setLoading(false)\n    })\n  }, [])\n  if (loading) return <div>Loading...</div>\n  return <ul>{users.map(u => <li key={u.id}>{u.name}</li>)}</ul>\n}"
+  },
+  {
+    "instruction": "Write a custom hook that tracks window size",
+    "input": "",
+    "output": "function useWindowSize() {\n  const [size, setSize] = useState({ width: window.innerWidth, height: window.innerHeight })\n  useEffect(() => {\n    const handleResize = () => setSize({ width: window.innerWidth, height: window.innerHeight })\n    window.addEventListener('resize', handleResize)\n    return () => window.removeEventListener('resize', handleResize)\n  }, [])\n  return size\n}"
+  },
+  {
+    "instruction": "Add error handling to this fetch call",
+    "input": "const data = await fetch(url).then(r => r.json())",
+    "output": "const response = await fetch(url)\nif (!response.ok) throw new Error(`HTTP ${response.status}`)\nconst data = await response.json()"
+  },
+  {
+    "instruction": "Create a toggle button component",
+    "input": "",
+    "output": "function ToggleButton({ label, onToggle }: { label: string, onToggle: (on: boolean) => void }) {\n  const [on, setOn] = useState(false)\n  const handleClick = () => {\n    setOn(!on)\n    onToggle(!on)\n  }\n  return <button onClick={handleClick}>{label}: {on ? 'ON' : 'OFF'}</button>\n}"
+  },
+  {
+    "instruction": "Write a test for this function",
+    "input": "function capitalize(str: string): string {\n  return str.charAt(0).toUpperCase() + str.slice(1)\n}",
+    "output": "describe('capitalize', () => {\n  it('capitalizes first letter', () => {\n    expect(capitalize('hello')).toBe('Hello')\n  })\n  it('handles empty string', () => {\n    expect(capitalize('')).toBe('')\n  })\n  it('handles already capitalized', () => {\n    expect(capitalize('Hello')).toBe('Hello')\n  })\n})"
+  },
+  {
+    "instruction": "Convert this class component to a functional component",
+    "input": "class Counter extends React.Component {\n  state = { count: 0 }\n  increment = () => this.setState({ count: this.state.count + 1 })\n  render() {\n    return <button onClick={this.increment}>{this.state.count}</button>\n  }\n}",
+    "output": "function Counter() {\n  const [count, setCount] = useState(0)\n  return <button onClick={() => setCount(c => c + 1)}>{count}</button>\n}"
+  },
+  {
+    "instruction": "Add Tailwind CSS classes for a centered card layout",
+    "input": "<div>\n  <h2>Title</h2>\n  <p>Content goes here</p>\n</div>",
+    "output": "<div className=\"mx-auto max-w-md rounded-lg border bg-white p-6 shadow-sm\">\n  <h2 className=\"text-lg font-semibold\">Title</h2>\n  <p className=\"mt-2 text-gray-600\">Content goes here</p>\n</div>"
+  },
+  {
+    "instruction": "Create a debounce hook",
+    "input": "",
+    "output": "function useDebounce<T>(value: T, delay: number): T {\n  const [debouncedValue, setDebouncedValue] = useState(value)\n  useEffect(() => {\n    const timer = setTimeout(() => setDebouncedValue(value), delay)\n    return () => clearTimeout(timer)\n  }, [value, delay])\n  return debouncedValue\n}"
+  },
+  {
+    "instruction": "Fix the useEffect dependency warning",
+    "input": "useEffect(() => {\n  fetchData(userId)\n}, [])",
+    "output": "useEffect(() => {\n  fetchData(userId)\n}, [userId])"
+  },
+  {
+    "instruction": "Add proper TypeScript return type to this function",
+    "input": "function getUser(id: string) {\n  return { id, name: 'John', email: 'john@example.com' }\n}",
+    "output": "interface User {\n  id: string\n  name: string\n  email: string\n}\n\nfunction getUser(id: string): User {\n  return { id, name: 'John', email: 'john@example.com' }\n}"
+  },
+  {
+    "instruction": "Create a simple modal component",
+    "input": "",
+    "output": "function Modal({ open, onClose, children }: { open: boolean, onClose: () => void, children: React.ReactNode }) {\n  if (!open) return null\n  return (\n    <div className=\"fixed inset-0 z-50 flex items-center justify-center bg-black/50\" onClick={onClose}>\n      <div className=\"rounded-lg bg-white p-6 shadow-xl\" onClick={e => e.stopPropagation()}>\n        {children}\n      </div>\n    </div>\n  )\n}"
+  },
+  {
+    "instruction": "Add aria labels for accessibility",
+    "input": "<button onClick={onClose}>X</button>\n<input onChange={handleSearch} />\n<img src={avatar} />",
+    "output": "<button onClick={onClose} aria-label=\"Close\">X</button>\n<input onChange={handleSearch} aria-label=\"Search\" />\n<img src={avatar} alt=\"User avatar\" />"
+  }
+]

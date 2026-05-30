@@ -34,10 +34,17 @@
 - [ ] Raw vs filtered comparison (filtered corpus ready, not yet trained on)
 
 ## Phase 4: Synthetic Data
-- [ ] Generate synthetic React/TS examples (via Claude API)
+- [x] Generate instruction pairs via Claude API — 115 pairs (15 seed + 100 generated, ~$1)
+- [ ] Generate more pairs (500+) for better generalization
 - [ ] Validate/filter synthetic data
-- [ ] Fine-tune with synthetic data
 - [ ] Measure impact
+
+## Phase 4.5: Instruction Tuning (early experiment)
+- [x] LoRA fine-tuning implementation — training/finetune_lora.py
+- [x] LoRA fine-tune on 30M model — loss 1.19 → 0.21, 27 seconds on laptop
+- [x] Test instruction following — model understands intent, output is rough but shows signal
+- [ ] Generate more instruction pairs and retrain
+- [ ] Compare instruction-tuned vs base model on eval set
 
 ## Phase 5: Hybrid Modules (Core)
 - [x] RAG (retrieval-augmented generation) — 120K chunks indexed, search working
@@ -64,7 +71,9 @@
 ## Phase 7: Cloud Training
 - [x] Cloud infrastructure tested — RunPod A100, 308K tok/s (15x laptop)
 - [x] GitHub release for data files — v0.1-data
-- [ ] 30M cloud runs (Shakespeare done, React/TS in progress)
+- [x] 30M Shakespeare cloud run — overfitted as expected (val 3.66), 75K tok/s
+- [x] 30M React/TS BPE cloud run — val loss 1.48, perplexity 4.39, generates real code
+- [x] Downloaded 30M checkpoint locally (121MB)
 - [ ] 100M pilot run
 - [ ] 300M ablation runs
 - [ ] 1B main run

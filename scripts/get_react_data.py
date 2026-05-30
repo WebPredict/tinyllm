@@ -42,6 +42,14 @@ SKIP_PATTERNS = [
     "node_modules", "dist", "build", ".next", "coverage",
     "__tests__", "test", "spec", ".d.ts", "package-lock",
     ".min.", "vendor", ".config.", "jest", "cypress",
+    ".svg", "icon", "svg",                   # SVG path data
+    "migration", "seed",                      # database migrations/seeds
+    "fixture", "mock", "__mock__",            # test fixtures
+    "generated", "codegen", "schema.ts",      # auto-generated code
+    ".stories.", "storybook",                 # Storybook stories (repetitive)
+    "locale", "i18n", "translation", "lang",  # translation files (key/value noise)
+    ".snap",                                  # Jest snapshots
+]
 ]
 
 
