@@ -8,6 +8,8 @@ data/react-ts/repos/
 data/react-ts/analysis.json
 data/react-ts/corpus.txt
 data/react-ts/corpus_filtered.txt
+data/react-ts-expanded/corpus.txt
+data/stack-frontend/
 data/input.txt
 data/rag_index/
 node_modules/
