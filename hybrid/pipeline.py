@@ -55,6 +55,10 @@ class HybridPipeline:
         validators: list = None,
         cache: Optional[Cache] = None,
         max_verifier_attempts: int = 3,
+        use_self_consistency: bool = False,
+        n_candidates: int = 5,
+        use_bracket_balancing: bool = True,
+        use_repetition_filter: bool = True,
     ):
         self.generate_fn = generate_fn
         self.rag = rag
@@ -62,8 +66,18 @@ class HybridPipeline:
         self.cache = cache or Cache()
         self.validators = validators or []
         self.max_attempts = max_verifier_attempts
+        self.use_self_consistency = use_self_consistency
+        self.n_candidates = n_candidates
+        self.use_bracket_balancing = use_bracket_balancing
+        self.use_repetition_filter = use_repetition_filter
 
         self.router = Router(cache=self.cache)
+
+        # Post-processing
+        from hybrid.constrained import BracketBalancer, RepetitionFilter, StopSequence
+        self.stop_filter = StopSequence(lambda p, **kw: p)  # just the truncation logic
+        self.bracket_balancer = BracketBalancer(lambda p, **kw: p)
+        self.repetition_filter = RepetitionFilter(lambda p, **kw: p)
 
     def run(self, query: str) -> PipelineResult:
         """Run the full hybrid pipeline on a query."""
@@ -110,7 +124,22 @@ class HybridPipeline:
         # Generate (with or without verifier loop)
         modules_used.append("generate")
 
-        if route.level >= 2 and self.validators:
+        if self.use_self_consistency and route.level >= 2 and self.validators:
+            # Self-consistency: generate N, pick best
+            from hybrid.self_consistency import SelfConsistency
+            sc = SelfConsistency(
+                generate_fn=lambda p, temperature=0.7: self.generate_fn(p),
+                validators=self.validators,
+                n_candidates=self.n_candidates,
+            )
+            sc_result = sc.run(full_prompt)
+            output = sc_result.output
+            passed = sc_result.passed
+            attempts = sc_result.n_generated
+            errors = []
+            modules_used.append(f"self_consistency({sc_result.n_passed}/{sc_result.n_generated})")
+
+        elif route.level >= 2 and self.validators:
             # Use verifier loop
             verifier = VerifierLoop(
                 generate_fn=self.generate_fn,
@@ -128,6 +157,14 @@ class HybridPipeline:
             output = self.generate_fn(full_prompt)
             passed = True
             attempts = 1
+            errors = []
+
+        # Post-processing
+        if self.use_repetition_filter:
+            output = self.repetition_filter.filter_repetition(output)
+        output = self.stop_filter.truncate(output)
+        if self.use_bracket_balancing:
+            output = self.bracket_balancer.balance(output)
             errors = []
 
         # Record in memory
