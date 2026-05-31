@@ -102,7 +102,8 @@ def make_generate_fn(model, encode, decode, block_size):
         if len(ids) > block_size - 100:
             ids = ids[-(block_size - 100):]
         idx = torch.tensor([ids], dtype=torch.long)
-        output = model.generate(idx, max_new_tokens=max_tokens, temperature=temperature, top_k=top_k)
+        with torch.no_grad():
+            output = model.generate(idx, max_new_tokens=max_tokens, temperature=temperature, top_k=top_k)
         full_text = decode(output[0].tolist())
         # Return only the new text, not the prompt
         prompt_decoded = decode(ids)
@@ -268,41 +269,84 @@ def main():
             if mem_context and verbose:
                 print(f"  Memory: {mem_context[:100]}...")
 
-        # Generate
+        # Post-processing helpers
+        from hybrid.constrained import BracketBalancer, RepetitionFilter, StopSequence
+
+        def clean_output(text):
+            """Apply post-processing to generated text."""
+            if is_instruction:
+                if "<|output|>" in text:
+                    text = text.split("<|output|>")[-1]
+                if "<|endoftext|>" in text:
+                    text = text.split("<|endoftext|>")[0]
+            text = StopSequence(lambda p: p).truncate(text)
+            text = RepetitionFilter(lambda p: p).filter_repetition(text)
+            text = BracketBalancer(lambda p: p).balance(text)
+            return text
+
+        # Generate — with self-consistency if complex query
+        use_sc = route.level >= 2 and len(prompt.split()) > 5
+        n_candidates = 5 if use_sc else 1
+
         t_gen = time.time()
-        output = generate_fn(full_prompt)
-        dt_gen = (time.time() - t_gen) * 1000
 
-        # Clean instruction output
-        if is_instruction:
-            if "<|output|>" in output:
-                output = output.split("<|output|>")[-1]
-            if "<|endoftext|>" in output:
-                output = output.split("<|endoftext|>")[0]
+        if n_candidates > 1:
+            # Self-consistency mode
+            print(f"  Generating {n_candidates} candidates...", end="", flush=True)
+            candidates = []
+            for i in range(n_candidates):
+                temp = 0.5 + (0.5 * i / (n_candidates - 1))
+                c = generate_fn(full_prompt, temperature=temp)
+                c = clean_output(c)
+                val = syntax_validator.validate(c)
+                candidates.append((c, val))
+                symbol = "." if val.passed else "x"
+                print(symbol, end="", flush=True)
+            print()
 
-        # Validate
-        t_val = time.time()
-        val_result = syntax_validator.validate(output)
-        dt_val = (time.time() - t_val) * 1000
+            # Pick best
+            valid = [(c, v) for c, v in candidates if v.passed]
+            if valid:
+                # Among valid, pick longest (usually more complete)
+                output, val_result = max(valid, key=lambda x: len(x[0]))
+            else:
+                # None passed — pick one with fewest errors
+                output, val_result = min(candidates, key=lambda x: len(x[1].errors))
 
-        # Verifier loop if validation failed
-        attempts = 1
-        if not val_result.passed and route.level >= 2:
+            attempts = n_candidates
+            n_passed = len(valid)
+            dt_gen = (time.time() - t_gen) * 1000
+
             if verbose:
-                print(f"  Validation failed: {val_result.errors[:2]}")
-                print(f"  Retrying with error feedback...")
+                print(f"  Self-consistency: {n_passed}/{n_candidates} passed validation")
+        else:
+            # Single generation
+            print(f"  Generating...", end="", flush=True)
+            output = generate_fn(full_prompt)
+            output = clean_output(output)
+            print(" done")
 
-            error_prompt = (
-                f"{full_prompt}\n\n"
-                f"// Fix these errors: {'; '.join(val_result.errors[:3])}\n"
-            )
-            output = generate_fn(error_prompt)
-            if is_instruction and "<|output|>" in output:
-                output = output.split("<|output|>")[-1]
-            if is_instruction and "<|endoftext|>" in output:
-                output = output.split("<|endoftext|>")[0]
+            # Validate
             val_result = syntax_validator.validate(output)
-            attempts = 2
+            dt_gen = (time.time() - t_gen) * 1000
+            attempts = 1
+            n_passed = 1 if val_result.passed else 0
+
+            # Verifier loop if validation failed
+            if not val_result.passed and route.level >= 2:
+                if verbose:
+                    print(f"  Validation failed: {val_result.errors[:2]}")
+                print(f"  Retrying with error feedback...", end="", flush=True)
+
+                error_prompt = (
+                    f"{full_prompt}\n\n"
+                    f"// Fix these errors: {'; '.join(val_result.errors[:3])}\n"
+                )
+                output = generate_fn(error_prompt)
+                output = clean_output(output)
+                val_result = syntax_validator.validate(output)
+                attempts = 2
+                print(" done")
 
         # Display output
         print()
@@ -314,19 +358,16 @@ def main():
         status_parts = [f"tier {route.level}"]
         if rag_context:
             status_parts.append("RAG")
-        if attempts > 1:
+        if n_candidates > 1:
+            status_parts.append(f"best of {n_candidates} ({n_passed} valid)")
+        elif attempts > 1:
             status_parts.append(f"{attempts} attempts")
         if val_result.passed:
             status_parts.append("syntax OK")
         else:
             status_parts.append(f"syntax errors: {len(val_result.errors)}")
         status_parts.append(f"{dt_total:.0f}ms")
-
-        if verbose:
-            print(f"  [{' | '.join(status_parts)}]")
-            print(f"  Timing: gen {dt_gen:.0f}ms, val {dt_val:.0f}ms")
-        else:
-            print(f"  [{' | '.join(status_parts)}]")
+        print(f"  [{' | '.join(status_parts)}]")
         print()
 
         # Record in memory
