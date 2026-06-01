@@ -44,7 +44,9 @@
 - [x] LoRA fine-tune on 30M model — loss 1.19 → 0.21, 27 seconds on laptop
 - [x] Test instruction following — model understands intent, output is rough but shows signal
 - [ ] Generate more instruction pairs and retrain
+- [x] LoRA fine-tune on 100M model — 0.5% trainable, proper freezing
 - [ ] Compare instruction-tuned vs base model on eval set
+- [ ] Generate more instruction pairs (500+)
 
 ## Phase 5: Hybrid Modules (Core)
 - [x] RAG (retrieval-augmented generation) — 120K chunks indexed, search working
@@ -74,6 +76,10 @@
 - [x] 30M Shakespeare cloud run — overfitted as expected (val 3.66), 75K tok/s
 - [x] 30M React/TS BPE cloud run — val loss 1.48, perplexity 4.39, generates real code
 - [x] Downloaded 30M checkpoint locally (121MB)
+- [x] 100M React/TS BPE cloud run — 10K steps on A100, 4.5 hours, ~$7
+- [x] Downloaded 100M checkpoint locally (399MB)
+- [ ] 1B throughput test on 4x H100 (script ready)
+- [ ] 1B full training run
 - [ ] 100M pilot run
 - [ ] 300M ablation runs
 - [ ] 1B main run

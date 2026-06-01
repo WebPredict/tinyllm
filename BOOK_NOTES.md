@@ -134,6 +134,40 @@ Interesting observations, learnings, and moments from building the project that 
 - This motivates both scaling up AND the hybrid approach: model gets intent, validators fix execution
 - Great book content: show the progression from "can't follow instructions at all" to "gets the idea but sloppy"
 
+### 100M model — real code generation quality
+- 100M BPE model on expanded React/TS corpus, 10K steps on A100, 4.5 hours, ~$7
+- Generates real component patterns: forwardRef, cn() utility, shadcn exports, Tailwind classes
+- Completion mode is genuinely useful — `function Button(` produces idiomatic React
+- RAG augmentation works: model generates in the style of retrieved code (Mantine vs shadcn)
+- Instruction following with LoRA: understands intent but still sloppy on specifics
+- Key lesson: 100M is great at completing patterns, weak at following precise instructions
+- Toggle button prompt → generated proper interface + component + Tailwind (impressive for 100M)
+- "Add types to multiply" → generated unrelated interface (needs more training pairs)
+
+### LoRA parameter counting bug — good debugging story for book
+- Initial LoRA implementation was training 69% of parameters instead of <5%
+- Bug: wasn't freezing non-LoRA parameters, only LoRA layers were set to requires_grad
+- Fix: explicitly freeze everything, then unfreeze only lora_* parameters
+- Result: 0.5% trainable (442K params out of 92M) — proper LoRA
+- But fewer trainable params needs more epochs to converge
+- Lesson: always verify what percentage is actually trainable
+
+### Streaming output transforms the UX
+- Before: stare at blank screen for 15-60 seconds
+- After: see tokens appear one by one, like ChatGPT
+- Simple change: callback in generate loop, print each token
+- Makes the same speed feel dramatically faster
+- Users can Ctrl+C early if output is going wrong
+- Must-have for any interactive demo
+
+### Cost estimates were wildly off — in both directions
+- Initial plan: $10K for 3B model
+- Actual A100 rates: way cheaper than expected
+- But throughput also way lower than extrapolated from 5M model
+- 5M model at 308K tok/s told us nothing about 1B throughput
+- Lesson for book: always do a throughput test before estimating costs
+- The 500-step test script (~$1) saves potentially hundreds in wasted time
+
 ### Memory enables personalization without retraining
 - SQLite stores interaction history, error patterns, success rates
 - Compact context summary injected into prompts (~500 chars)
