@@ -35,16 +35,16 @@ config = {
     "n_layer": 24,
     "n_head": 16,
     "n_embd": 2048,
-    "block_size": 2048,
+    "block_size": 1024,        # 1024 for speed (3400 chars context)
     "dropout": 0.1,
 
-    # Training
+    # Training — targeting 2B tokens (~4.5x over 441M token corpus)
     "batch_size": 8,           # per GPU
     "grad_accum_steps": 4,     # effective batch = 8 * 4 * num_gpus
     "learning_rate": 3e-4,
     "min_lr": 3e-5,
-    "max_steps": 50000,
-    "warmup_steps": 1000,
+    "max_steps": 15000,        # ~2B tokens at 131K tokens/step
+    "warmup_steps": 500,
     "eval_interval": 1000,
     "eval_steps": 20,
     "log_interval": 100,
