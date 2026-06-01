@@ -43,7 +43,7 @@ config = {
     "grad_accum_steps": 4,     # effective batch = 8 * 4 * num_gpus
     "learning_rate": 3e-4,
     "min_lr": 3e-5,
-    "max_steps": 15000,        # ~2B tokens at 131K tokens/step
+    "max_steps": 8000,         # ~2B tokens at 262K tokens/step (block 2048)
     "warmup_steps": 500,
     "eval_interval": 1000,
     "eval_steps": 20,
