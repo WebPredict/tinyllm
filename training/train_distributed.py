@@ -35,7 +35,7 @@ config = {
     "n_layer": 24,
     "n_head": 16,
     "n_embd": 2048,
-    "block_size": 1024,        # 1024 for speed (3400 chars context)
+    "block_size": 2048,        # 2048 for more context (~6800 chars)
     "dropout": 0.1,
 
     # Training — targeting 2B tokens (~4.5x over 441M token corpus)
