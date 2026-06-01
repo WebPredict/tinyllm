@@ -173,6 +173,11 @@ def main():
     # Note: quantization disabled — incompatible with LoRA layers
     # Speed comes from streaming (tokens appear as generated) and reduced max_tokens
 
+    # Clear cache on startup (stale results from previous models)
+    if "--fresh" in sys.argv:
+        Cache().clear_all()
+        print("  Cache cleared (--fresh)")
+
     # Initialize hybrid modules
     print("Initializing hybrid modules...")
 
@@ -245,18 +250,38 @@ def main():
 
         t0 = time.time()
 
-        # Instruction mode
+        # Instruction mode — uses completion-style prompting
+        # Frame instructions as "here's an example, now do this pattern"
         is_instruction = prompt.startswith("!")
         if is_instruction:
             prompt = prompt[1:].strip()
-            full_prompt = f"<|instruction|>\n{prompt}\n<|input|>\n\n<|output|>\n"
             task_type = "instruction"
+
+            # Split instruction from input code if present
+            instruction = prompt
+            input_code = ""
+            for sep in [": function ", ": const ", ": class ", ": interface ", ": type ", ": let ", ": var "]:
+                if sep in prompt:
+                    idx = prompt.index(sep)
+                    instruction = prompt[:idx]
+                    input_code = prompt[idx+2:]
+                    break
+
+            # Build completion-style prompt (RAG will add examples later)
+            if input_code:
+                full_prompt = f"// Task: {instruction}\n// Input:\n// {input_code}\n// Output:\n"
+            else:
+                full_prompt = f"// Task: {instruction}\n// Output:\n"
         else:
             full_prompt = prompt
             task_type = "completion"
 
-        # Route
+        # Route — instruction mode always gets tier 2+
         route = router.route(prompt)
+        if is_instruction and route.level < 2:
+            route.level = 2
+            route.modules = ["rag", "generate", "validator"]
+            route.reason = "Instruction mode (forced tier 2)"
         if verbose:
             print(f"  Route: tier {route.level} — {route.reason}")
             print(f"  Modules: {route.modules}")
@@ -272,17 +297,31 @@ def main():
                 print()
                 continue
 
-        # RAG augmentation
+        # RAG augmentation — find relevant code examples
         rag_context = ""
         if route.level >= 2 and rag_count > 0:
             t_rag = time.time()
             hits = rag.search(prompt, top_k=3)
-            rag_context = "\n\n".join(
-                f"// Example from: {h['metadata']['file']}\n{h['text'][:300]}"
-                for h in hits
-            )
-            if rag_context:
-                full_prompt = f"// Relevant examples:\n{rag_context}\n\n{full_prompt}"
+
+            if is_instruction:
+                # For instructions: provide examples as patterns to follow
+                examples = []
+                for h in hits:
+                    code = h['text'][:400].strip()
+                    if code:
+                        examples.append(f"// Example:\n{code}")
+                if examples:
+                    rag_context = "\n\n".join(examples[:2])  # top 2 examples
+                    full_prompt = f"{rag_context}\n\n{full_prompt}"
+            else:
+                # For completion: provide context
+                rag_context = "\n\n".join(
+                    f"// From: {h['metadata']['file']}\n{h['text'][:300]}"
+                    for h in hits
+                )
+                if rag_context:
+                    full_prompt = f"{rag_context}\n\n{full_prompt}"
+
             if verbose:
                 dt_rag = (time.time() - t_rag) * 1000
                 print(f"  RAG: {len(hits)} results, {dt_rag:.0f}ms")
@@ -301,11 +340,14 @@ def main():
 
         def clean_output(text):
             """Apply post-processing to generated text."""
-            if is_instruction:
-                if "<|output|>" in text:
-                    text = text.split("<|output|>")[-1]
-                if "<|endoftext|>" in text:
-                    text = text.split("<|endoftext|>")[0]
+            # Strip any special tokens
+            for token in ["<|output|>", "<|endoftext|>", "<|instruction|>", "<|input|>"]:
+                if token in text:
+                    text = text.split(token)[0]
+            # Strip comment prefixes from instruction prompts
+            if is_instruction and text.startswith("// "):
+                lines = text.split("\n")
+                text = "\n".join(l[3:] if l.startswith("// ") else l for l in lines)
             text = StopSequence(lambda p: p).truncate(text)
             text = RepetitionFilter(lambda p: p).filter_repetition(text)
             text = BracketBalancer(lambda p: p).balance(text)
