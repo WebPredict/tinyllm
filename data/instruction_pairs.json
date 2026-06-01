@@ -573,5 +573,305 @@
     "instruction": "Create a debounced search input component with TypeScript",
     "input": "",
     "output": "interface SearchInputProps {\n  onSearch: (query: string) => void\n  placeholder?: string\n  delay?: number\n}\n\nfunction SearchInput({ onSearch, placeholder = 'Search...', delay = 300 }: SearchInputProps) {\n  const [query, setQuery] = useState('')\n  \n  useEffect(() => {\n    const timeoutId = setTimeout(() => {\n      onSearch(query)\n    }, delay)\n    \n    return () => clearTimeout(timeoutId)\n  }, [query, delay, onSearch])\n  \n  return (\n    <input\n      type=\"text\"\n      value={query}\n      onChange={(e) => setQuery(e.target.value)}\n      placeholder={placeholder}\n      className=\"w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500\"\n    />\n  )\n}"
+  },
+  {
+    "instruction": "Create a TypeScript interface for a product card component",
+    "input": "",
+    "output": "interface Product {\n  id: string\n  name: string\n  price: number\n  imageUrl: string\n  inStock: boolean\n}\n\ninterface ProductCardProps {\n  product: Product\n  onAddToCart: (id: string) => void\n}"
+  },
+  {
+    "instruction": "Add error handling to this data fetching component",
+    "input": "function BlogPost({ id }: { id: string }) {\n  const [post, setPost] = useState(null)\n  useEffect(() => {\n    fetch(`/api/posts/${id}`).then(r => r.json()).then(setPost)\n  }, [id])\n  return <div>{post?.title}</div>\n}",
+    "output": "function BlogPost({ id }: { id: string }) {\n  const [post, setPost] = useState(null)\n  const [error, setError] = useState<string | null>(null)\n  useEffect(() => {\n    fetch(`/api/posts/${id}`)\n      .then(r => {\n        if (!r.ok) throw new Error('Failed to fetch')\n        return r.json()\n      })\n      .then(setPost)\n      .catch(e => setError(e.message))\n  }, [id])\n  if (error) return <div className=\"text-red-500\">Error: {error}</div>\n  return <div>{post?.title}</div>\n}"
+  },
+  {
+    "instruction": "Convert this class component to a functional component with hooks",
+    "input": "class Counter extends React.Component {\n  state = { count: 0 }\n  increment = () => this.setState({ count: this.state.count + 1 })\n  render() {\n    return <button onClick={this.increment}>{this.state.count}</button>\n  }\n}",
+    "output": "function Counter() {\n  const [count, setCount] = useState(0)\n  const increment = () => setCount(c => c + 1)\n  return <button onClick={increment}>{count}</button>\n}"
+  },
+  {
+    "instruction": "Add accessibility attributes to this form input",
+    "input": "<div>\n  <label>Email</label>\n  <input type=\"email\" />\n  <span>Please enter a valid email</span>\n</div>",
+    "output": "<div>\n  <label htmlFor=\"email-input\">Email</label>\n  <input \n    id=\"email-input\"\n    type=\"email\" \n    aria-describedby=\"email-error\"\n    aria-required=\"true\"\n  />\n  <span id=\"email-error\" role=\"alert\">Please enter a valid email</span>\n</div>"
+  },
+  {
+    "instruction": "Create a custom hook for managing form input state",
+    "input": "",
+    "output": "function useInput(initialValue: string) {\n  const [value, setValue] = useState(initialValue)\n  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {\n    setValue(e.target.value)\n  }\n  const reset = () => setValue(initialValue)\n  return { value, onChange: handleChange, reset }\n}"
+  },
+  {
+    "instruction": "Add Tailwind styling to create a modern card layout",
+    "input": "<div>\n  <img src={product.image} alt={product.name} />\n  <h3>{product.name}</h3>\n  <p>{product.price}</p>\n  <button>Add to Cart</button>\n</div>",
+    "output": "<div className=\"bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow\">\n  <img src={product.image} alt={product.name} className=\"w-full h-48 object-cover\" />\n  <div className=\"p-4\">\n    <h3 className=\"text-lg font-semibold text-gray-900\">{product.name}</h3>\n    <p className=\"text-xl font-bold text-green-600 mt-2\">{product.price}</p>\n    <button className=\"w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 mt-4\">Add to Cart</button>\n  </div>\n</div>"
+  },
+  {
+    "instruction": "Write a Jest test for this utility function",
+    "input": "function formatCurrency(amount: number, currency = 'USD'): string {\n  return new Intl.NumberFormat('en-US', {\n    style: 'currency',\n    currency\n  }).format(amount)\n}",
+    "output": "import { formatCurrency } from './utils'\n\ndescribe('formatCurrency', () => {\n  it('formats USD currency correctly', () => {\n    expect(formatCurrency(123.45)).toBe('$123.45')\n  })\n  \n  it('formats different currencies', () => {\n    expect(formatCurrency(100, 'EUR')).toBe('\u20ac100.00')\n  })\n  \n  it('handles zero amount', () => {\n    expect(formatCurrency(0)).toBe('$0.00')\n  })\n})"
+  },
+  {
+    "instruction": "Fix the missing dependency warning in this useEffect",
+    "input": "function UserProfile({ userId }) {\n  const [user, setUser] = useState(null)\n  const apiKey = 'abc123'\n  \n  useEffect(() => {\n    fetchUser(userId, apiKey).then(setUser)\n  }, [])\n  \n  return <div>{user?.name}</div>\n}",
+    "output": "function UserProfile({ userId }) {\n  const [user, setUser] = useState(null)\n  const apiKey = 'abc123'\n  \n  useEffect(() => {\n    fetchUser(userId, apiKey).then(setUser)\n  }, [userId, apiKey])\n  \n  return <div>{user?.name}</div>\n}"
+  },
+  {
+    "instruction": "Create a TypeScript enum and use it in a component",
+    "input": "",
+    "output": "enum ButtonVariant {\n  PRIMARY = 'primary',\n  SECONDARY = 'secondary',\n  DANGER = 'danger'\n}\n\ninterface ButtonProps {\n  variant: ButtonVariant\n  children: React.ReactNode\n}\n\nfunction Button({ variant, children }: ButtonProps) {\n  const baseClass = 'px-4 py-2 rounded font-medium'\n  const variantClass = variant === ButtonVariant.PRIMARY ? 'bg-blue-600 text-white' : 'bg-gray-200'\n  return <button className={`${baseClass} ${variantClass}`}>{children}</button>\n}"
+  },
+  {
+    "instruction": "Add proper TypeScript types to this context provider",
+    "input": "const ThemeContext = createContext()\n\nfunction ThemeProvider({ children }) {\n  const [theme, setTheme] = useState('light')\n  return (\n    <ThemeContext.Provider value={{ theme, setTheme }}>\n      {children}\n    </ThemeContext.Provider>\n  )\n}",
+    "output": "interface ThemeContextType {\n  theme: 'light' | 'dark'\n  setTheme: (theme: 'light' | 'dark') => void\n}\n\nconst ThemeContext = createContext<ThemeContextType | undefined>(undefined)\n\nfunction ThemeProvider({ children }: { children: React.ReactNode }) {\n  const [theme, setTheme] = useState<'light' | 'dark'>('light')\n  return (\n    <ThemeContext.Provider value={{ theme, setTheme }}>\n      {children}\n    </ThemeContext.Provider>\n  )\n}"
+  },
+  {
+    "instruction": "Create a debounced search input component",
+    "input": "",
+    "output": "function SearchInput({ onSearch }: { onSearch: (query: string) => void }) {\n  const [query, setQuery] = useState('')\n  \n  useEffect(() => {\n    const timeoutId = setTimeout(() => {\n      onSearch(query)\n    }, 300)\n    \n    return () => clearTimeout(timeoutId)\n  }, [query, onSearch])\n  \n  return (\n    <input\n      type=\"text\"\n      value={query}\n      onChange={(e) => setQuery(e.target.value)}\n      placeholder=\"Search...\"\n      className=\"w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500\"\n    />\n  )\n}"
+  },
+  {
+    "instruction": "Write a React Testing Library test for a toggle button",
+    "input": "function ToggleButton({ onToggle }: { onToggle: (isOn: boolean) => void }) {\n  const [isOn, setIsOn] = useState(false)\n  const handleClick = () => {\n    setIsOn(!isOn)\n    onToggle(!isOn)\n  }\n  return <button onClick={handleClick}>{isOn ? 'ON' : 'OFF'}</button>\n}",
+    "output": "import { render, screen, fireEvent } from '@testing-library/react'\nimport ToggleButton from './ToggleButton'\n\ntest('toggles state and calls onToggle', () => {\n  const mockOnToggle = jest.fn()\n  render(<ToggleButton onToggle={mockOnToggle} />)\n  \n  const button = screen.getByRole('button')\n  expect(button).toHaveTextContent('OFF')\n  \n  fireEvent.click(button)\n  expect(button).toHaveTextContent('ON')\n  expect(mockOnToggle).toHaveBeenCalledWith(true)\n})"
+  },
+  {
+    "instruction": "Add conditional rendering based on user role",
+    "input": "function AdminPanel() {\n  return (\n    <div>\n      <h1>Admin Panel</h1>\n      <button>Delete Users</button>\n      <button>View Analytics</button>\n    </div>\n  )\n}",
+    "output": "interface User {\n  role: 'admin' | 'user' | 'moderator'\n}\n\nfunction AdminPanel({ user }: { user: User }) {\n  if (user.role !== 'admin') {\n    return <div className=\"text-red-500\">Access denied. Admin privileges required.</div>\n  }\n  \n  return (\n    <div className=\"p-6\">\n      <h1 className=\"text-2xl font-bold mb-4\">Admin Panel</h1>\n      <button className=\"bg-red-600 text-white px-4 py-2 rounded mr-2\">Delete Users</button>\n      <button className=\"bg-blue-600 text-white px-4 py-2 rounded\">View Analytics</button>\n    </div>\n  )\n}"
+  },
+  {
+    "instruction": "Create a generic TypeScript utility type for API responses",
+    "input": "",
+    "output": "type ApiResponse<T> = {\n  data: T\n  message: string\n  success: boolean\n}\n\ntype ApiError = {\n  error: string\n  code: number\n  success: false\n}\n\ntype ApiResult<T> = ApiResponse<T> | ApiError\n\n// Usage example\nfunction useApi<T>(url: string) {\n  const [result, setResult] = useState<ApiResult<T> | null>(null)\n  const [loading, setLoading] = useState(false)\n  \n  useEffect(() => {\n    setLoading(true)\n    fetch(url).then(r => r.json()).then(setResult).finally(() => setLoading(false))\n  }, [url])\n  \n  return { result, loading }\n}"
+  },
+  {
+    "instruction": "Add form validation with TypeScript to this login form",
+    "input": "function LoginForm() {\n  const [email, setEmail] = useState('')\n  const [password, setPassword] = useState('')\n  \n  return (\n    <form>\n      <input value={email} onChange={(e) => setEmail(e.target.value)} />\n      <input value={password} onChange={(e) => setPassword(e.target.value)} />\n      <button type=\"submit\">Login</button>\n    </form>\n  )\n}",
+    "output": "interface FormErrors {\n  email?: string\n  password?: string\n}\n\nfunction LoginForm() {\n  const [email, setEmail] = useState('')\n  const [password, setPassword] = useState('')\n  const [errors, setErrors] = useState<FormErrors>({})\n  \n  const validateForm = (): boolean => {\n    const newErrors: FormErrors = {}\n    if (!email.includes('@')) newErrors.email = 'Invalid email'\n    if (password.length < 6) newErrors.password = 'Password too short'\n    setErrors(newErrors)\n    return Object.keys(newErrors).length === 0\n  }\n  \n  const handleSubmit = (e: React.FormEvent) => {\n    e.preventDefault()\n    if (validateForm()) {\n      // Submit form\n    }\n  }\n  \n  return (\n    <form onSubmit={handleSubmit}>\n      <input value={email} onChange={(e) => setEmail(e.target.value)} />\n      {errors.email && <span className=\"text-red-500\">{errors.email}</span>}\n      <input type=\"password\" value={password} onChange={(e) => setPassword(e.target.value)} />\n      {errors.password && <span className=\"text-red-500\">{errors.password}</span>}\n      <button type=\"submit\">Login</button>\n    </form>\n  )\n}"
+  },
+  {
+    "instruction": "Convert this class component to a functional component with hooks",
+    "input": "class Counter extends React.Component {\n  state = { count: 0 }\n  increment = () => this.setState({ count: this.state.count + 1 })\n  render() {\n    return <button onClick={this.increment}>{this.state.count}</button>\n  }\n}",
+    "output": "function Counter() {\n  const [count, setCount] = useState(0)\n  const increment = () => setCount(count + 1)\n  return <button onClick={increment}>{count}</button>\n}"
+  },
+  {
+    "instruction": "Add error handling to this async component",
+    "input": "function Posts() {\n  const [posts, setPosts] = useState([])\n  useEffect(() => {\n    fetch('/api/posts').then(r => r.json()).then(setPosts)\n  }, [])\n  return <div>{posts.map(p => <div key={p.id}>{p.title}</div>)}</div>\n}",
+    "output": "function Posts() {\n  const [posts, setPosts] = useState([])\n  const [error, setError] = useState<string | null>(null)\n  useEffect(() => {\n    fetch('/api/posts')\n      .then(r => r.json())\n      .then(setPosts)\n      .catch(err => setError(err.message))\n  }, [])\n  if (error) return <div className=\"text-red-500\">Error: {error}</div>\n  return <div>{posts.map(p => <div key={p.id}>{p.title}</div>)}</div>\n}"
+  },
+  {
+    "instruction": "Create a reusable Button component with TypeScript and Tailwind CSS",
+    "input": "",
+    "output": "interface ButtonProps {\n  children: React.ReactNode\n  variant?: 'primary' | 'secondary'\n  onClick?: () => void\n  disabled?: boolean\n}\n\nfunction Button({ children, variant = 'primary', onClick, disabled }: ButtonProps) {\n  const baseClass = 'px-4 py-2 rounded font-medium'\n  const variantClass = variant === 'primary' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-800'\n  return (\n    <button \n      className={`${baseClass} ${variantClass} ${disabled ? 'opacity-50' : ''}`}\n      onClick={onClick}\n      disabled={disabled}\n    >\n      {children}\n    </button>\n  )\n}"
+  },
+  {
+    "instruction": "Write a custom hook for managing form input state",
+    "input": "",
+    "output": "function useInput(initialValue: string = '') {\n  const [value, setValue] = useState(initialValue)\n  const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {\n    setValue(e.target.value)\n  }\n  const reset = () => setValue(initialValue)\n  return { value, onChange, reset }\n}"
+  },
+  {
+    "instruction": "Add accessibility attributes to this form",
+    "input": "<form>\n  <div>\n    <label>Email</label>\n    <input type=\"email\" />\n  </div>\n  <div>\n    <label>Password</label>\n    <input type=\"password\" />\n  </div>\n  <button>Submit</button>\n</form>",
+    "output": "<form>\n  <div>\n    <label htmlFor=\"email\">Email</label>\n    <input type=\"email\" id=\"email\" name=\"email\" required aria-describedby=\"email-help\" />\n  </div>\n  <div>\n    <label htmlFor=\"password\">Password</label>\n    <input type=\"password\" id=\"password\" name=\"password\" required aria-describedby=\"password-help\" />\n  </div>\n  <button type=\"submit\" aria-label=\"Submit form\">Submit</button>\n</form>"
+  },
+  {
+    "instruction": "Write a Jest test for this component",
+    "input": "function Welcome({ name }: { name: string }) {\n  return <h1>Welcome, {name}!</h1>\n}",
+    "output": "import { render, screen } from '@testing-library/react'\nimport Welcome from './Welcome'\n\ntest('renders welcome message with name', () => {\n  render(<Welcome name=\"John\" />)\n  const heading = screen.getByText('Welcome, John!')\n  expect(heading).toBeInTheDocument()\n})"
+  },
+  {
+    "instruction": "Fix the infinite re-render bug in this component",
+    "input": "function UserProfile({ userId }: { userId: string }) {\n  const [user, setUser] = useState(null)\n  useEffect(() => {\n    fetchUser(userId).then(setUser)\n  })\n  return <div>{user?.name}</div>\n}",
+    "output": "function UserProfile({ userId }: { userId: string }) {\n  const [user, setUser] = useState(null)\n  useEffect(() => {\n    fetchUser(userId).then(setUser)\n  }, [userId])\n  return <div>{user?.name}</div>\n}"
+  },
+  {
+    "instruction": "Create a responsive card component with Tailwind CSS",
+    "input": "",
+    "output": "interface CardProps {\n  title: string\n  content: string\n  imageUrl?: string\n}\n\nfunction Card({ title, content, imageUrl }: CardProps) {\n  return (\n    <div className=\"bg-white rounded-lg shadow-md overflow-hidden max-w-sm md:max-w-md lg:max-w-lg\">\n      {imageUrl && <img src={imageUrl} alt={title} className=\"w-full h-48 object-cover\" />}\n      <div className=\"p-6\">\n        <h3 className=\"text-xl font-semibold mb-2\">{title}</h3>\n        <p className=\"text-gray-600\">{content}</p>\n      </div>\n    </div>\n  )\n}"
+  },
+  {
+    "instruction": "Add TypeScript interface for this API response",
+    "input": "function useUsers() {\n  const [users, setUsers] = useState([])\n  useEffect(() => {\n    fetch('/api/users').then(r => r.json()).then(setUsers)\n  }, [])\n  return users\n}",
+    "output": "interface User {\n  id: number\n  name: string\n  email: string\n  avatar?: string\n}\n\nfunction useUsers() {\n  const [users, setUsers] = useState<User[]>([])\n  useEffect(() => {\n    fetch('/api/users').then(r => r.json()).then(setUsers)\n  }, [])\n  return users\n}"
+  },
+  {
+    "instruction": "Create a toggle component with proper state management",
+    "input": "",
+    "output": "interface ToggleProps {\n  label: string\n  defaultChecked?: boolean\n  onChange?: (checked: boolean) => void\n}\n\nfunction Toggle({ label, defaultChecked = false, onChange }: ToggleProps) {\n  const [checked, setChecked] = useState(defaultChecked)\n  const handleChange = () => {\n    const newChecked = !checked\n    setChecked(newChecked)\n    onChange?.(newChecked)\n  }\n  return (\n    <label className=\"flex items-center cursor-pointer\">\n      <input type=\"checkbox\" checked={checked} onChange={handleChange} className=\"sr-only\" />\n      <div className={`w-10 h-6 rounded-full ${checked ? 'bg-blue-500' : 'bg-gray-300'}`}>\n        <div className={`w-4 h-4 bg-white rounded-full m-1 transition-transform ${checked ? 'translate-x-4' : ''}`} />\n      </div>\n      <span className=\"ml-2\">{label}</span>\n    </label>\n  )\n}"
+  },
+  {
+    "instruction": "Add debounced search functionality to this input",
+    "input": "function SearchInput({ onSearch }: { onSearch: (query: string) => void }) {\n  const [query, setQuery] = useState('')\n  return <input value={query} onChange={e => setQuery(e.target.value)} />\n}",
+    "output": "function SearchInput({ onSearch }: { onSearch: (query: string) => void }) {\n  const [query, setQuery] = useState('')\n  useEffect(() => {\n    const timer = setTimeout(() => {\n      onSearch(query)\n    }, 300)\n    return () => clearTimeout(timer)\n  }, [query, onSearch])\n  return <input value={query} onChange={e => setQuery(e.target.value)} className=\"border rounded px-3 py-2\" />\n}"
+  },
+  {
+    "instruction": "Convert this to use useReducer for complex state",
+    "input": "function Counter() {\n  const [count, setCount] = useState(0)\n  const increment = () => setCount(count + 1)\n  const decrement = () => setCount(count - 1)\n  const reset = () => setCount(0)\n  return <div>{count}</div>\n}",
+    "output": "type Action = { type: 'increment' } | { type: 'decrement' } | { type: 'reset' }\n\nfunction counterReducer(state: number, action: Action): number {\n  switch (action.type) {\n    case 'increment': return state + 1\n    case 'decrement': return state - 1\n    case 'reset': return 0\n    default: return state\n  }\n}\n\nfunction Counter() {\n  const [count, dispatch] = useReducer(counterReducer, 0)\n  return <div>{count}</div>\n}"
+  },
+  {
+    "instruction": "Add proper error boundaries and TypeScript to this component",
+    "input": "function DataDisplay() {\n  const data = JSON.parse(localStorage.getItem('data'))\n  return <div>{data.value}</div>\n}",
+    "output": "interface Data {\n  value: string\n}\n\nfunction DataDisplay() {\n  try {\n    const storedData = localStorage.getItem('data')\n    if (!storedData) return <div>No data found</div>\n    \n    const data: Data = JSON.parse(storedData)\n    return <div>{data.value}</div>\n  } catch (error) {\n    return <div className=\"text-red-500\">Error loading data</div>\n  }\n}"
+  },
+  {
+    "instruction": "Create a modal component with portal and focus management",
+    "input": "",
+    "output": "interface ModalProps {\n  isOpen: boolean\n  onClose: () => void\n  children: React.ReactNode\n}\n\nfunction Modal({ isOpen, onClose, children }: ModalProps) {\n  useEffect(() => {\n    const handleEscape = (e: KeyboardEvent) => {\n      if (e.key === 'Escape') onClose()\n    }\n    if (isOpen) document.addEventListener('keydown', handleEscape)\n    return () => document.removeEventListener('keydown', handleEscape)\n  }, [isOpen, onClose])\n  \n  if (!isOpen) return null\n  \n  return createPortal(\n    <div className=\"fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50\" onClick={onClose}>\n      <div className=\"bg-white rounded-lg p-6 max-w-md w-full m-4\" onClick={e => e.stopPropagation()}>\n        {children}\n      </div>\n    </div>,\n    document.body\n  )\n}"
+  },
+  {
+    "instruction": "Write a unit test for this custom hook",
+    "input": "function useCounter(initialValue = 0) {\n  const [count, setCount] = useState(initialValue)\n  const increment = () => setCount(c => c + 1)\n  const decrement = () => setCount(c => c - 1)\n  return { count, increment, decrement }\n}",
+    "output": "import { renderHook, act } from '@testing-library/react'\nimport { useCounter } from './useCounter'\n\ntest('should increment and decrement counter', () => {\n  const { result } = renderHook(() => useCounter(5))\n  \n  expect(result.current.count).toBe(5)\n  \n  act(() => {\n    result.current.increment()\n  })\n  expect(result.current.count).toBe(6)\n  \n  act(() => {\n    result.current.decrement()\n  })\n  expect(result.current.count).toBe(5)\n})"
+  },
+  {
+    "instruction": "Add error handling to this fetch component",
+    "input": "function PostList() {\n  const [posts, setPosts] = useState([])\n  useEffect(() => {\n    fetch('/api/posts').then(r => r.json()).then(setPosts)\n  }, [])\n  return <div>{posts.map(p => <div key={p.id}>{p.title}</div>)}</div>\n}",
+    "output": "function PostList() {\n  const [posts, setPosts] = useState([])\n  const [error, setError] = useState<string | null>(null)\n  useEffect(() => {\n    fetch('/api/posts')\n      .then(r => r.json())\n      .then(setPosts)\n      .catch(err => setError(err.message))\n  }, [])\n  if (error) return <div className=\"text-red-500\">Error: {error}</div>\n  return <div>{posts.map(p => <div key={p.id}>{p.title}</div>)}</div>\n}"
+  },
+  {
+    "instruction": "Create a Button component with TypeScript props and Tailwind styles",
+    "input": "",
+    "output": "interface ButtonProps {\n  children: React.ReactNode\n  onClick?: () => void\n  variant?: 'primary' | 'secondary'\n  disabled?: boolean\n}\n\nfunction Button({ children, onClick, variant = 'primary', disabled }: ButtonProps) {\n  const baseStyles = 'px-4 py-2 rounded font-medium'\n  const variantStyles = variant === 'primary' \n    ? 'bg-blue-500 text-white hover:bg-blue-600' \n    : 'bg-gray-200 text-gray-800 hover:bg-gray-300'\n  \n  return (\n    <button \n      onClick={onClick}\n      disabled={disabled}\n      className={`${baseStyles} ${variantStyles} disabled:opacity-50`}\n    >\n      {children}\n    </button>\n  )\n}"
+  },
+  {
+    "instruction": "Convert this class component to a functional component with hooks",
+    "input": "class Counter extends React.Component {\n  state = { count: 0 }\n  increment = () => {\n    this.setState({ count: this.state.count + 1 })\n  }\n  render() {\n    return <button onClick={this.increment}>{this.state.count}</button>\n  }\n}",
+    "output": "function Counter() {\n  const [count, setCount] = useState(0)\n  const increment = () => setCount(c => c + 1)\n  return <button onClick={increment}>{count}</button>\n}"
+  },
+  {
+    "instruction": "Add accessibility attributes to this form component",
+    "input": "function LoginForm() {\n  return (\n    <form>\n      <label>Email</label>\n      <input type=\"email\" />\n      <label>Password</label>\n      <input type=\"password\" />\n      <button type=\"submit\">Login</button>\n    </form>\n  )\n}",
+    "output": "function LoginForm() {\n  return (\n    <form role=\"form\" aria-labelledby=\"login-title\">\n      <h2 id=\"login-title\" className=\"sr-only\">Login Form</h2>\n      <label htmlFor=\"email\">Email</label>\n      <input id=\"email\" type=\"email\" required aria-describedby=\"email-error\" />\n      <label htmlFor=\"password\">Password</label>\n      <input id=\"password\" type=\"password\" required aria-describedby=\"password-error\" />\n      <button type=\"submit\" aria-label=\"Submit login form\">Login</button>\n    </form>\n  )\n}"
+  },
+  {
+    "instruction": "Write a custom hook for localStorage with TypeScript",
+    "input": "",
+    "output": "function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T) => void] {\n  const [storedValue, setStoredValue] = useState<T>(() => {\n    try {\n      const item = localStorage.getItem(key)\n      return item ? JSON.parse(item) : initialValue\n    } catch (error) {\n      return initialValue\n    }\n  })\n\n  const setValue = (value: T) => {\n    try {\n      setStoredValue(value)\n      localStorage.setItem(key, JSON.stringify(value))\n    } catch (error) {\n      console.error('Error saving to localStorage:', error)\n    }\n  }\n\n  return [storedValue, setValue]\n}"
+  },
+  {
+    "instruction": "Fix the missing dependency warning in this useEffect",
+    "input": "function UserProfile({ userId }) {\n  const [user, setUser] = useState(null)\n  useEffect(() => {\n    fetchUser(userId).then(setUser)\n  }, [])\n  return <div>{user?.name}</div>\n}",
+    "output": "function UserProfile({ userId }) {\n  const [user, setUser] = useState(null)\n  useEffect(() => {\n    fetchUser(userId).then(setUser)\n  }, [userId])\n  return <div>{user?.name}</div>\n}"
+  },
+  {
+    "instruction": "Create a simple test for this component using React Testing Library",
+    "input": "function Welcome({ name }: { name: string }) {\n  return <h1>Welcome, {name}!</h1>\n}",
+    "output": "import { render, screen } from '@testing-library/react'\nimport Welcome from './Welcome'\n\ntest('renders welcome message with name', () => {\n  render(<Welcome name=\"John\" />)\n  const welcomeElement = screen.getByText(/welcome, john!/i)\n  expect(welcomeElement).toBeInTheDocument()\n})"
+  },
+  {
+    "instruction": "Add TypeScript interface for this API response",
+    "input": "function ProductList() {\n  const [products, setProducts] = useState([])\n  useEffect(() => {\n    fetch('/api/products').then(r => r.json()).then(setProducts)\n  }, [])\n  return <div>{products.map(p => <div key={p.id}>{p.name} - ${p.price}</div>)}</div>\n}",
+    "output": "interface Product {\n  id: number\n  name: string\n  price: number\n}\n\nfunction ProductList() {\n  const [products, setProducts] = useState<Product[]>([])\n  useEffect(() => {\n    fetch('/api/products').then(r => r.json()).then(setProducts)\n  }, [])\n  return <div>{products.map(p => <div key={p.id}>{p.name} - ${p.price}</div>)}</div>\n}"
+  },
+  {
+    "instruction": "Create a loading skeleton component with Tailwind CSS",
+    "input": "",
+    "output": "function LoadingSkeleton() {\n  return (\n    <div className=\"animate-pulse space-y-4\">\n      <div className=\"h-4 bg-gray-300 rounded w-3/4\"></div>\n      <div className=\"h-4 bg-gray-300 rounded w-1/2\"></div>\n      <div className=\"h-20 bg-gray-300 rounded\"></div>\n      <div className=\"flex space-x-4\">\n        <div className=\"h-10 bg-gray-300 rounded w-20\"></div>\n        <div className=\"h-10 bg-gray-300 rounded w-20\"></div>\n      </div>\n    </div>\n  )\n}"
+  },
+  {
+    "instruction": "Add debounce to this search input component",
+    "input": "function SearchInput({ onSearch }) {\n  const [query, setQuery] = useState('')\n  useEffect(() => {\n    onSearch(query)\n  }, [query])\n  return <input value={query} onChange={e => setQuery(e.target.value)} />\n}",
+    "output": "function SearchInput({ onSearch }) {\n  const [query, setQuery] = useState('')\n  useEffect(() => {\n    const timer = setTimeout(() => {\n      onSearch(query)\n    }, 300)\n    return () => clearTimeout(timer)\n  }, [query, onSearch])\n  return <input value={query} onChange={e => setQuery(e.target.value)} />\n}"
+  },
+  {
+    "instruction": "Convert this JavaScript component to TypeScript with proper event handling",
+    "input": "function ContactForm({ onSubmit }) {\n  const handleSubmit = (e) => {\n    e.preventDefault()\n    const formData = new FormData(e.target)\n    onSubmit({ name: formData.get('name'), email: formData.get('email') })\n  }\n  return (\n    <form onSubmit={handleSubmit}>\n      <input name=\"name\" required />\n      <input name=\"email\" type=\"email\" required />\n      <button type=\"submit\">Submit</button>\n    </form>\n  )\n}",
+    "output": "interface ContactFormProps {\n  onSubmit: (data: { name: string; email: string }) => void\n}\n\nfunction ContactForm({ onSubmit }: ContactFormProps) {\n  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {\n    e.preventDefault()\n    const formData = new FormData(e.currentTarget)\n    onSubmit({ \n      name: formData.get('name') as string, \n      email: formData.get('email') as string \n    })\n  }\n  return (\n    <form onSubmit={handleSubmit}>\n      <input name=\"name\" required />\n      <input name=\"email\" type=\"email\" required />\n      <button type=\"submit\">Submit</button>\n    </form>\n  )\n}"
+  },
+  {
+    "instruction": "Create a modal component with proper focus management",
+    "input": "",
+    "output": "interface ModalProps {\n  isOpen: boolean\n  onClose: () => void\n  children: React.ReactNode\n}\n\nfunction Modal({ isOpen, onClose, children }: ModalProps) {\n  useEffect(() => {\n    if (isOpen) {\n      document.body.style.overflow = 'hidden'\n      return () => { document.body.style.overflow = 'unset' }\n    }\n  }, [isOpen])\n\n  if (!isOpen) return null\n\n  return (\n    <div className=\"fixed inset-0 z-50 flex items-center justify-center\">\n      <div className=\"fixed inset-0 bg-black bg-opacity-50\" onClick={onClose} />\n      <div className=\"bg-white rounded-lg p-6 relative z-10\" role=\"dialog\" aria-modal=\"true\">\n        <button onClick={onClose} className=\"absolute top-2 right-2\" aria-label=\"Close modal\">\u00d7</button>\n        {children}\n      </div>\n    </div>\n  )\n}"
+  },
+  {
+    "instruction": "Add proper TypeScript types for this reducer function",
+    "input": "function todoReducer(state, action) {\n  switch (action.type) {\n    case 'ADD_TODO':\n      return [...state, { id: Date.now(), text: action.text, done: false }]\n    case 'TOGGLE_TODO':\n      return state.map(todo => todo.id === action.id ? { ...todo, done: !todo.done } : todo)\n    default:\n      return state\n  }\n}",
+    "output": "interface Todo {\n  id: number\n  text: string\n  done: boolean\n}\n\ntype TodoAction = \n  | { type: 'ADD_TODO'; text: string }\n  | { type: 'TOGGLE_TODO'; id: number }\n\nfunction todoReducer(state: Todo[], action: TodoAction): Todo[] {\n  switch (action.type) {\n    case 'ADD_TODO':\n      return [...state, { id: Date.now(), text: action.text, done: false }]\n    case 'TOGGLE_TODO':\n      return state.map(todo => todo.id === action.id ? { ...todo, done: !todo.done } : todo)\n    default:\n      return state\n  }\n}"
+  },
+  {
+    "instruction": "Fix the infinite re-render issue in this component",
+    "input": "function UserData({ userId }) {\n  const [user, setUser] = useState(null)\n  const fetchUser = async () => {\n    const response = await fetch(`/api/users/${userId}`)\n    setUser(await response.json())\n  }\n  useEffect(() => {\n    fetchUser()\n  }, [fetchUser])\n  return <div>{user?.name}</div>\n}",
+    "output": "function UserData({ userId }) {\n  const [user, setUser] = useState(null)\n  const fetchUser = useCallback(async () => {\n    const response = await fetch(`/api/users/${userId}`)\n    setUser(await response.json())\n  }, [userId])\n  useEffect(() => {\n    fetchUser()\n  }, [fetchUser])\n  return <div>{user?.name}</div>\n}"
+  },
+  {
+    "instruction": "Create a responsive card grid component with Tailwind CSS",
+    "input": "",
+    "output": "interface Card {\n  id: number\n  title: string\n  description: string\n  image?: string\n}\n\ninterface CardGridProps {\n  cards: Card[]\n}\n\nfunction CardGrid({ cards }: CardGridProps) {\n  return (\n    <div className=\"grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6\">\n      {cards.map(card => (\n        <div key={card.id} className=\"bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow\">\n          {card.image && <img src={card.image} alt={card.title} className=\"w-full h-48 object-cover\" />}\n          <div className=\"p-4\">\n            <h3 className=\"text-lg font-semibold mb-2\">{card.title}</h3>\n            <p className=\"text-gray-600\">{card.description}</p>\n          </div>\n        </div>\n      ))}\n    </div>\n  )\n}"
+  },
+  {
+    "instruction": "Add error handling to this data fetching component",
+    "input": "function ProductList() {\n  const [products, setProducts] = useState([])\n  useEffect(() => {\n    fetch('/api/products').then(r => r.json()).then(setProducts)\n  }, [])\n  return <div>{products.map(p => <div key={p.id}>{p.name}</div>)}</div>\n}",
+    "output": "function ProductList() {\n  const [products, setProducts] = useState([])\n  const [error, setError] = useState<string | null>(null)\n  useEffect(() => {\n    fetch('/api/products')\n      .then(r => r.json())\n      .then(setProducts)\n      .catch(err => setError(err.message))\n  }, [])\n  if (error) return <div className=\"text-red-500\">Error: {error}</div>\n  return <div>{products.map(p => <div key={p.id}>{p.name}</div>)}</div>\n}"
+  },
+  {
+    "instruction": "Convert this class component to a functional component with hooks",
+    "input": "class Counter extends Component {\n  state = { count: 0 }\n  increment = () => this.setState({ count: this.state.count + 1 })\n  render() {\n    return <button onClick={this.increment}>{this.state.count}</button>\n  }\n}",
+    "output": "function Counter() {\n  const [count, setCount] = useState(0)\n  const increment = () => setCount(count + 1)\n  return <button onClick={increment}>{count}</button>\n}"
+  },
+  {
+    "instruction": "Add accessibility attributes to this button component",
+    "input": "function DeleteButton({ onDelete }) {\n  return <button onClick={onDelete}>\u00d7</button>\n}",
+    "output": "interface DeleteButtonProps {\n  onDelete: () => void\n}\n\nfunction DeleteButton({ onDelete }: DeleteButtonProps) {\n  return (\n    <button \n      onClick={onDelete}\n      aria-label=\"Delete item\"\n      className=\"text-red-500 hover:text-red-700\"\n    >\n      \u00d7\n    </button>\n  )\n}"
+  },
+  {
+    "instruction": "Write a simple test for this sum function",
+    "input": "function sum(a: number, b: number): number {\n  return a + b\n}",
+    "output": "import { describe, it, expect } from 'vitest'\n\nfunction sum(a: number, b: number): number {\n  return a + b\n}\n\ndescribe('sum', () => {\n  it('adds two numbers correctly', () => {\n    expect(sum(2, 3)).toBe(5)\n    expect(sum(-1, 1)).toBe(0)\n    expect(sum(0, 0)).toBe(0)\n  })\n})"
+  },
+  {
+    "instruction": "Create a toggle hook for showing/hiding content",
+    "input": "",
+    "output": "function useToggle(initialValue = false) {\n  const [value, setValue] = useState(initialValue)\n  const toggle = useCallback(() => setValue(v => !v), [])\n  const setTrue = useCallback(() => setValue(true), [])\n  const setFalse = useCallback(() => setValue(false), [])\n  return { value, toggle, setTrue, setFalse }\n}"
+  },
+  {
+    "instruction": "Add TypeScript types to this API response handler",
+    "input": "function handleUserResponse(response) {\n  return {\n    users: response.data,\n    total: response.total,\n    hasMore: response.page < response.totalPages\n  }\n}",
+    "output": "interface ApiResponse {\n  data: User[]\n  total: number\n  page: number\n  totalPages: number\n}\n\ninterface User {\n  id: string\n  name: string\n  email: string\n}\n\nfunction handleUserResponse(response: ApiResponse) {\n  return {\n    users: response.data,\n    total: response.total,\n    hasMore: response.page < response.totalPages\n  }\n}"
+  },
+  {
+    "instruction": "Create a reusable Input component with Tailwind styling",
+    "input": "",
+    "output": "interface InputProps {\n  label: string\n  value: string\n  onChange: (value: string) => void\n  placeholder?: string\n  type?: string\n}\n\nfunction Input({ label, value, onChange, placeholder, type = 'text' }: InputProps) {\n  return (\n    <div className=\"mb-4\">\n      <label className=\"block text-sm font-medium text-gray-700 mb-1\">{label}</label>\n      <input\n        type={type}\n        value={value}\n        onChange={(e) => onChange(e.target.value)}\n        placeholder={placeholder}\n        className=\"w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500\"\n      />\n    </div>\n  )\n}"
+  },
+  {
+    "instruction": "Fix the infinite loop bug in this useEffect",
+    "input": "function UserProfile({ userId }) {\n  const [user, setUser] = useState(null)\n  useEffect(() => {\n    fetchUser(userId).then(setUser)\n  })\n  return <div>{user?.name}</div>\n}",
+    "output": "interface UserProfileProps {\n  userId: string\n}\n\nfunction UserProfile({ userId }: UserProfileProps) {\n  const [user, setUser] = useState<User | null>(null)\n  useEffect(() => {\n    fetchUser(userId).then(setUser)\n  }, [userId])\n  return <div>{user?.name}</div>\n}"
+  },
+  {
+    "instruction": "Add debouncing to this search input",
+    "input": "function SearchBox({ onSearch }) {\n  const [query, setQuery] = useState('')\n  useEffect(() => {\n    onSearch(query)\n  }, [query, onSearch])\n  return <input value={query} onChange={(e) => setQuery(e.target.value)} />\n}",
+    "output": "interface SearchBoxProps {\n  onSearch: (query: string) => void\n}\n\nfunction SearchBox({ onSearch }: SearchBoxProps) {\n  const [query, setQuery] = useState('')\n  useEffect(() => {\n    const timer = setTimeout(() => onSearch(query), 300)\n    return () => clearTimeout(timer)\n  }, [query, onSearch])\n  return <input value={query} onChange={(e) => setQuery(e.target.value)} />\n}"
+  },
+  {
+    "instruction": "Create a Modal component with proper focus management",
+    "input": "",
+    "output": "interface ModalProps {\n  isOpen: boolean\n  onClose: () => void\n  children: React.ReactNode\n}\n\nfunction Modal({ isOpen, onClose, children }: ModalProps) {\n  useEffect(() => {\n    const handleEscape = (e: KeyboardEvent) => {\n      if (e.key === 'Escape') onClose()\n    }\n    if (isOpen) document.addEventListener('keydown', handleEscape)\n    return () => document.removeEventListener('keydown', handleEscape)\n  }, [isOpen, onClose])\n  \n  if (!isOpen) return null\n  \n  return (\n    <div className=\"fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center\" onClick={onClose}>\n      <div className=\"bg-white p-6 rounded-lg\" onClick={(e) => e.stopPropagation()}>\n        {children}\n      </div>\n    </div>\n  )\n}"
+  },
+  {
+    "instruction": "Convert this JavaScript component to TypeScript with proper event types",
+    "input": "function Form({ onSubmit }) {\n  const handleSubmit = (e) => {\n    e.preventDefault()\n    const formData = new FormData(e.target)\n    onSubmit(Object.fromEntries(formData))\n  }\n  return <form onSubmit={handleSubmit}><input name=\"email\" /><button>Submit</button></form>\n}",
+    "output": "interface FormProps {\n  onSubmit: (data: Record<string, string>) => void\n}\n\nfunction Form({ onSubmit }: FormProps) {\n  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {\n    e.preventDefault()\n    const formData = new FormData(e.currentTarget)\n    onSubmit(Object.fromEntries(formData) as Record<string, string>)\n  }\n  return <form onSubmit={handleSubmit}><input name=\"email\" /><button>Submit</button></form>\n}"
+  },
+  {
+    "instruction": "Create a custom hook for localStorage with TypeScript",
+    "input": "",
+    "output": "function useLocalStorage<T>(key: string, initialValue: T) {\n  const [value, setValue] = useState<T>(() => {\n    try {\n      const item = window.localStorage.getItem(key)\n      return item ? JSON.parse(item) : initialValue\n    } catch {\n      return initialValue\n    }\n  })\n  \n  const setStoredValue = (value: T | ((val: T) => T)) => {\n    try {\n      const valueToStore = value instanceof Function ? value(value) : value\n      setValue(valueToStore)\n      window.localStorage.setItem(key, JSON.stringify(valueToStore))\n    } catch (error) {\n      console.error(error)\n    }\n  }\n  \n  return [value, setStoredValue] as const\n}"
+  },
+  {
+    "instruction": "Add optimistic updates to this todo toggle functionality",
+    "input": "function TodoItem({ todo, onToggle }) {\n  const handleToggle = () => {\n    onToggle(todo.id)\n  }\n  return <div onClick={handleToggle}>{todo.completed ? '\u2713' : '\u25cb'} {todo.text}</div>\n}",
+    "output": "interface Todo {\n  id: string\n  text: string\n  completed: boolean\n}\n\ninterface TodoItemProps {\n  todo: Todo\n  onToggle: (id: string) => Promise<void>\n}\n\nfunction TodoItem({ todo, onToggle }: TodoItemProps) {\n  const [isCompleted, setIsCompleted] = useState(todo.completed)\n  \n  const handleToggle = async () => {\n    setIsCompleted(!isCompleted)\n    try {\n      await onToggle(todo.id)\n    } catch {\n      setIsCompleted(isCompleted)\n    }\n  }\n  \n  return <div onClick={handleToggle}>{isCompleted ? '\u2713' : '\u25cb'} {todo.text}</div>\n}"
+  },
+  {
+    "instruction": "Create a Skeleton loader component for better UX",
+    "input": "",
+    "output": "interface SkeletonProps {\n  width?: string\n  height?: string\n  className?: string\n}\n\nfunction Skeleton({ width = '100%', height = '20px', className = '' }: SkeletonProps) {\n  return (\n    <div \n      className={`animate-pulse bg-gray-300 rounded ${className}`}\n      style={{ width, height }}\n    />\n  )\n}\n\nfunction SkeletonCard() {\n  return (\n    <div className=\"p-4 border rounded\">\n      <Skeleton height=\"24px\" className=\"mb-2\" />\n      <Skeleton height=\"16px\" width=\"60%\" className=\"mb-1\" />\n      <Skeleton height=\"16px\" width=\"80%\" />\n    </div>\n  )\n}"
+  },
+  {
+    "instruction": "Write a React component test using React Testing Library",
+    "input": "function Button({ onClick, children, disabled = false }) {\n  return <button onClick={onClick} disabled={disabled}>{children}</button>\n}",
+    "output": "import { render, screen, fireEvent } from '@testing-library/react'\nimport { describe, it, expect, vi } from 'vitest'\n\nfunction Button({ onClick, children, disabled = false }) {\n  return <button onClick={onClick} disabled={disabled}>{children}</button>\n}\n\ndescribe('Button', () => {\n  it('calls onClick when clicked', () => {\n    const handleClick = vi.fn()\n    render(<Button onClick={handleClick}>Click me</Button>)\n    fireEvent.click(screen.getByRole('button'))\n    expect(handleClick).toHaveBeenCalledTimes(1)\n  })\n  \n  it('does not call onClick when disabled', () => {\n    const handleClick = vi.fn()\n    render(<Button onClick={handleClick} disabled>Click me</Button>)\n    fireEvent.click(screen.getByRole('button'))\n    expect(handleClick).not.toHaveBeenCalled()\n  })\n})"
   }
 ]
