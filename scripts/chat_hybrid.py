@@ -94,18 +94,38 @@ def load_model(checkpoint_path, lora_path=None):
     return model, encode, decode, cfg
 
 
-def make_generate_fn(model, encode, decode, block_size):
+def make_generate_fn(model, encode, decode, block_size, stream=True):
     """Create a generate function for use in the pipeline."""
-    def generate(prompt, max_tokens=300, temperature=0.7, top_k=40):
+    def generate(prompt, max_tokens=150, temperature=0.7, top_k=40):
         ids = encode(prompt)
-        # Truncate to block size if needed
         if len(ids) > block_size - 100:
             ids = ids[-(block_size - 100):]
         idx = torch.tensor([ids], dtype=torch.long)
-        with torch.no_grad():
-            output = model.generate(idx, max_new_tokens=max_tokens, temperature=temperature, top_k=top_k)
-        full_text = decode(output[0].tolist())
-        # Return only the new text, not the prompt
+
+        if stream:
+            # Stream tokens as they're generated
+            generated_ids = []
+            def on_token(token_id):
+                generated_ids.append(token_id)
+                # Decode the new token and print it
+                text = decode(generated_ids)
+                prev = decode(generated_ids[:-1]) if len(generated_ids) > 1 else ""
+                new_text = text[len(prev):]
+                if new_text:
+                    print(new_text, end="", flush=True)
+
+            with torch.no_grad():
+                output = model.generate(idx, max_new_tokens=max_tokens,
+                                       temperature=temperature, top_k=top_k,
+                                       stream_callback=on_token)
+            print()  # newline after streaming
+            full_text = decode(output[0].tolist())
+        else:
+            with torch.no_grad():
+                output = model.generate(idx, max_new_tokens=max_tokens,
+                                       temperature=temperature, top_k=top_k)
+            full_text = decode(output[0].tolist())
+
         prompt_decoded = decode(ids)
         if full_text.startswith(prompt_decoded):
             return full_text[len(prompt_decoded):]
@@ -118,25 +138,29 @@ def main():
     checkpoint_path = None
     verbose = False
 
-    for arg in sys.argv[1:]:
+    # Parse args — handle --lora and --verbose flags first
+    lora_path = None
+    skip_next = False
+    for i, arg in enumerate(sys.argv[1:]):
+        if skip_next:
+            skip_next = False
+            continue
         if arg == "--verbose":
             verbose = True
+        elif arg == "--lora":
+            if i + 2 < len(sys.argv):
+                lora_path = Path(sys.argv[i + 2])
+            skip_next = True
         elif not arg.startswith("--"):
             checkpoint_path = Path(arg)
 
     if checkpoint_path is None:
         checkpoint_path = find_latest_checkpoint()
 
-    # Only load LoRA if explicitly requested
-    lora_path = None
-    if "--lora" in sys.argv:
-        lora_idx = sys.argv.index("--lora")
-        if lora_idx + 1 < len(sys.argv):
-            lora_path = Path(sys.argv[lora_idx + 1])
-        else:
-            auto_lora = checkpoint_path.parent / f"{checkpoint_path.stem}_lora.pt"
-            if auto_lora.exists():
-                lora_path = auto_lora
+    if lora_path is None:
+        auto_lora = checkpoint_path.parent / f"{checkpoint_path.stem}_lora.pt"
+        if auto_lora.exists():
+            lora_path = auto_lora
 
     # Load model
     print(f"Loading model: {checkpoint_path.name}")
@@ -145,6 +169,9 @@ def main():
     model, encode, decode, cfg = load_model(checkpoint_path, lora_path)
     block_size = cfg["block_size"]
     print(f"Model: {model.n_params:,} params")
+
+    # Note: quantization disabled — incompatible with LoRA layers
+    # Speed comes from streaming (tokens appear as generated) and reduced max_tokens
 
     # Initialize hybrid modules
     print("Initializing hybrid modules...")
@@ -284,9 +311,8 @@ def main():
             text = BracketBalancer(lambda p: p).balance(text)
             return text
 
-        # Generate — with self-consistency if complex query
-        use_sc = route.level >= 2 and len(prompt.split()) > 5
-        n_candidates = 5 if use_sc else 1
+        # Generate — single candidate with verifier loop (faster than self-consistency)
+        n_candidates = 1
 
         t_gen = time.time()
 
@@ -320,11 +346,10 @@ def main():
             if verbose:
                 print(f"  Self-consistency: {n_passed}/{n_candidates} passed validation")
         else:
-            # Single generation
-            print(f"  Generating...", end="", flush=True)
+            # Single generation (streams to terminal)
+            print()
             output = generate_fn(full_prompt)
             output = clean_output(output)
-            print(" done")
 
             # Validate
             val_result = syntax_validator.validate(output)
@@ -348,9 +373,8 @@ def main():
                 attempts = 2
                 print(" done")
 
-        # Display output
-        print()
-        print(output.strip())
+        # Display output (if not already streamed)
+        # Streaming prints during generation, so just add spacing
         print()
 
         # Stats line

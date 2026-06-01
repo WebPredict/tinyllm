@@ -129,8 +129,13 @@ class GPT(nn.Module):
         return logits, loss
 
     @torch.no_grad()
-    def generate(self, idx, max_new_tokens, temperature=1.0, top_k=None):
-        """Generate tokens autoregressively."""
+    def generate(self, idx, max_new_tokens, temperature=1.0, top_k=None, stream_callback=None):
+        """Generate tokens autoregressively.
+
+        Args:
+            stream_callback: Optional function called with each new token ID.
+                            If provided, enables streaming output.
+        """
         for _ in range(max_new_tokens):
             # Crop to block size
             idx_cond = idx[:, -self.block_size:]
@@ -144,5 +149,8 @@ class GPT(nn.Module):
             probs = F.softmax(logits, dim=-1)
             idx_next = torch.multinomial(probs, num_samples=1)
             idx = torch.cat([idx, idx_next], dim=1)
+
+            if stream_callback:
+                stream_callback(idx_next[0, 0].item())
 
         return idx

@@ -69,7 +69,7 @@ def apply_lora(model, rank=8, alpha=16, target_modules=None):
                        Default: attention Q, K, V, and output projections.
     """
     if target_modules is None:
-        target_modules = ["qkv", "proj"]
+        target_modules = ["attn.qkv", "attn.proj"]
 
     lora_params = 0
     frozen_params = 0
@@ -93,15 +93,16 @@ def apply_lora(model, rank=8, alpha=16, target_modules=None):
                 setattr(parent, attr, lora_layer)
                 lora_params += module.in_features * rank + rank * module.out_features
 
-    # Count frozen vs trainable
-    for p in model.parameters():
-        if p.requires_grad:
-            pass  # LoRA params
+    # Freeze everything, then unfreeze only LoRA params
+    for name, param in model.named_parameters():
+        if "lora_" in name:
+            param.requires_grad = True
         else:
-            frozen_params += p.numel()
+            param.requires_grad = False
 
     trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    total = sum(p.numel() for p in model.parameters())
+    frozen_params = sum(p.numel() for p in model.parameters() if not p.requires_grad)
+    total = trainable + frozen_params
 
     print(f"LoRA applied: rank={rank}, alpha={alpha}")
     print(f"  Trainable: {trainable:,} ({trainable/total*100:.1f}%)")
